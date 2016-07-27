@@ -1,13 +1,13 @@
 /**
  * LEARNING POINT
  * Keep most components as 'pure' meaning they have no state and just render the props passed down.
- * Previous version of this file tried to spread the State model across the RecipeBox, Recipe, and 
+ * Previous version of this file tried to spread the State model across the RecipeBook, Recipe, and 
  * Ingredient classes. This is wrong. It should all be contained in the first because it is not 
- * possible to make a change to Ingredient that is not to be reflected in the RecipeBox. 
+ * possible to make a change to Ingredient that is not to be reflected in the RecipeBook. 
  * 
  * This app may be developed in a very similar way to the Kanban-App of the Apress Pro React book.
  * In particular have a look how that app creates the list of tasks in CheckList.js (chapter 4 version).
- * Note that a Task component is passed (as props) functions defined in the RecipeBox which expect a
+ * Note that a Task component is passed (as props) functions defined in the RecipeBook which expect a
  * taskId and a CardId. These equate to an ingredientId, and a RecipeId.
  * 
  * Note the method of 'binding' the context and the arguments to functions. So this is a way of passing
@@ -16,34 +16,110 @@
  * 
  * DATA STRUCTURE:
  * The code is coupled to the data structure, which is described by example in getInitialRecipes().
+ * 
+ * TODO:
+ *  - Create a RecipeEditor class that will be used instead of the Recipe class when the (yet to be created)
+ *    this.state.editingIndex property is included.
+ *  - Have the fa-minus icons show up only in RecipeEditor component.
+ *  - Show / hide ingredients by clicking on the Recipe title.
+ *  - Edit ingredients (not essential)
+ *  - Replace newList method of updating state. Use the react immutable helper addon update() method.
  */
 
-var Recipe = React.createClass({
+var Ingredient = React.createClass({
     render: function(){
-
-        var ingredients = this.props.recipe.ingredients.map(function(ingredient, index){
-           return <li key={ingredient}>{ingredient}</li>
-        });
-
         return (
-            <div id={this.props.recipe.name} className='recipe'>
-                <h3>{this.props.recipe.name}</h3>
-                <p>{this.props.recipe.description}</p>
-                <ul className='ingredients'>{ingredients}</ul>
-                <button onClick={this.props.deleteRecipe.bind(null, this.props.recipe.name)}>Delete</button>
+        <div key={this.props.ingredient}>                            
+            <li>
+                {this.props.editing ? 
+                    <i className="fa fa-minus" style={{color: "red"}}></i> 
+                    : null}
+                <span className="ingredient">{this.props.ingredient}</span>
+            </li>
+        </div>)
+    }
+});
+
+var NewRecipeForm = React.createClass({
+    render: function(){
+        return (
+            <div className="newRecipe">
+                    Name of new recipe: <input type="text" 
+                        value={this.props.newRecipe} 
+                        onChange={this.props.newRecipeFieldChange} 
+                        onKeyPress={this.props.checkNewRecipeEnterKey}/>
+                </div>
+        )
+    }
+});
+
+var RecipeEditor = React.createClass({
+    render: function(){
+        return (
+            <div className="recipeEditor">
+                <div>Name: <input 
+                    type="text" 
+                    value={this.props.recipe.name} 
+                    onChange={this.props.currentRecipeNameChange} 
+                /></div>
+                <div>Description: <textarea 
+                    value={this.props.recipe.description} 
+                    onChange={this.props.currentDescriptionChange}
+                /></div>
+                <ul>{this.props.ingredients}</ul>
             </div>
         )
     }
 });
 
-var RecipeBox = React.createClass({
+var Recipe = React.createClass({
+    render: function(){
+
+        var self = this;        
+
+        return (
+            <div style={{clear: "both"}} id={this.props.recipe.name} className='recipe'>
+                <h3>
+                    <span className="handCursor" onClick={this.props.makeCurrent}>{this.props.recipe.name}</span>
+                    <i className="fa fa-pencil padleft handCursor" onClick={this.props.makeEditable}></i>
+                </h3>          
+                {this.props.currentRecipe  ? (
+                        <div className='recipeDetails'>
+                            <p>{this.props.recipe.description}</p>
+                            <ul>{this.props.ingredients}</ul>
+                        </div>
+                ) : null}                
+                {this.props.editing ? (
+                    <div>
+                        <input type="text"
+                            className="add-ingredient"
+                            placeholder="Add ingredient - press Enter to insert..."
+                            onKeyPress={this.checkInputKeyPress}
+                            style={{float: "left"}}
+                        />  
+                        <a onClick={this.props.deleteRecipe.bind(null, this.props.recipe.name)} style={{float: "right", cursor: "pointer"}}>Delete Recipe</a>
+                    </div>
+                    )
+                : null}             
+            </div>
+        )
+    },
+    checkInputKeyPress: function(evt){
+        if(evt.key === 'Enter'){
+        this.props.addIngredient(this.props.recipe.name, evt.target.value);
+        evt.target.value = '';
+        }
+    }
+});
+
+var RecipeBook = React.createClass({
     getRecipes: function(){
         // TODO - confirm received data is in the correct format.
         //this.setState({recipes: JSON.parse(localStorage.getItem("_dave004_recipes"))});
     },
 
     getInitialState: function(){
-        return {recipes: {}, currentRecipe: ''}
+        return {recipes: {}, newRecipe: '', showNewRecipeForm: false, currentRecipeIndex: -1, editingRecipeIndex: -1}
     },
 
     componentWillMount: function(){
@@ -51,28 +127,102 @@ var RecipeBox = React.createClass({
         this.setState({recipes: firstRecipes})
     },
 
+    makeCurrent: function(index){
+        this.setState({currentRecipeIndex: index, editingRecipeIndex: -1})
+    },
+    makeEditable: function(index){
+        this.setState({editingRecipeIndex: index, currentRecipeIndex: index })
+    },
+    currentRecipeNameChange: function(evt){
+        var newList = this.state.recipes;
+        newList[this.state.editingRecipeIndex].name = evt.target.value;
+        this.setState({recipes: newList});
+        // TODO - update localStorage and persist to database.
+    },
+    currentDescriptionChange: function(evt){
+        var newList = this.state.recipes;
+        newList[this.state.editingRecipeIndex].description = evt.target.value;
+        this.setState({recipes: newList});
+    },
+
     render: function(){
         var self = this;
         if(this.state.recipes != null){
-            var recipes = this.state.recipes.map(function(recipe){
+            var recipes = this.state.recipes.map(function(recipe, index){
+
+                    var editing = self.state.editingRecipeIndex === index;
+
+                    if(recipe.ingredients.length > 0) {
+                                var ingredients = recipe.ingredients.map(function(ingredient, i){
+                                return <Ingredient key={ingredient} ingredient={ingredient} editing={editing} index={i} />
+                            }
+                        );
+                    }
+
+                    else var ingredients = "Not much of a recipe with no ingredients!"
+
                 return (
-                    <Recipe
-                    key={recipe.name}
-                    recipe={recipe}
-                    deleteRecipe={self.deleteRecipe}/>
+                    <div className="recipes" key={index}>
+                        {editing ? (
+                            <RecipeEditor
+                                recipeIndex={index}
+                                recipe={recipe}
+                                deleteRecipe={self.deleteRecipe}
+                                addIngredient={self.addIngredient}
+                                currentRecipeNameChange={self.currentRecipeNameChange} 
+                                currentDescriptionChange={self.currentDescriptionChange}
+                                ingredients={ingredients}
+                            />
+                            
+                        ) : (
+                            <Recipe                                
+                                recipeIndex={index}
+                                recipe={recipe}
+                                currentRecipe={self.state.currentRecipeIndex === index}
+                                makeEditable={self.makeEditable.bind(null, index)}
+                                makeCurrent={self.makeCurrent.bind(null, index)}
+                                ingredients={ingredients}
+                            />                                            
+                        ) }
+                    </div>
                 )
             });
         }
         else var recipes = "No recipes in local storage";
 
         return (
-            <div className="recipeBox">
-            <h1>The Recipe Box</h1>
-            <button onClick={this.addRecipe}>Add New</button>
-            <h2>Recipes</h2>
-            {recipes}
+            <div className="recipeBook">
+                { this.state.showNewRecipeForm ? 
+                    <NewRecipeForm 
+                        newRecipe={this.newRecipe} 
+                        newRecipeFieldChange={this.newRecipeFieldChange} 
+                        checkNewRecipeEnterKey={this.checkNewRecipeEnterKey}
+                    /> : null }                
+                <h1>Recipes<i onClick={this.toggleNewRecipeField} className="fa fa-plus green padleft handCursor"></i></h1>
+                {recipes}                
             </div>
         )
+    },
+    toggleNewRecipeField: function(){
+        this.setState({showNewRecipeForm: !this.state.showNewRecipeForm})
+    },
+    newRecipeFieldChange: function(evt){
+        this.setState({newRecipe: evt.target.value});
+    },
+    checkNewRecipeEnterKey: function(evt){        
+        if(evt.key === 'Enter'){
+            var newName = this.state.newRecipe;
+            var newList = this.state.recipes; 
+            newList.push({name: newName, ingredients: [], description: ""});
+            this.setState({recipes: newList, newRecipe: '', showNewRecipeForm: false });
+        }
+    },
+    addIngredient: function(recipeName, ingredient){
+        var newList = this.state.recipes;
+        var recipeIndex = newList.findIndex((recipe)=>recipe.name == recipeName);
+        newList[recipeIndex].ingredients.push(ingredient);
+        // TODO change this to use the React update libary, rather than replacing the entire list.
+        this.setState({recipes: newList});
     },
     deleteRecipe: function(recipeName){
         var newList = this.state.recipes;
@@ -80,6 +230,7 @@ var RecipeBox = React.createClass({
         newList.splice(recipeIndex, 1);
         this.setState({recipes: newList});
     },
+
     getFirstRecipes: function() {
     return [{
             name: "Spaghetti Bolognaisse",
@@ -98,11 +249,11 @@ var RecipeBox = React.createClass({
             ],
             description: 'Put it all in a pot and cook for about 20 minutes'
         }
-    ] 
-}
+        ] 
+    }
 });
 
 ReactDOM.render(
-    <RecipeBox />,
+    <RecipeBook />,
     document.getElementById('content')
 );

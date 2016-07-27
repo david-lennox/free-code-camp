@@ -56,6 +56,7 @@ p, ul {
 
 ul {
   padding-left: 30px;
+  list-style-type: none;
 }
 
 .avatar {
@@ -68,4 +69,20 @@ ul {
   height: 50px;
   width: 50px;
   border: 2px solid green;
+}
+
+.ingredient {
+  padding-left: 20px;
+}
+
+.green {
+  color: green;
+}
+
+.padleft {
+  padding-left: 25px;
+}
+
+.handCursor {
+  cursor: pointer;
 }
