@@ -28,8 +28,9 @@ var Recipe = React.createClass({
         return (
             <div id={this.props.recipe.name} className='recipe'>
                 <h3>{this.props.recipe.name}</h3>
+                <p>{this.props.recipe.description}</p>
                 <ul className='ingredients'>{ingredients}</ul>
-                <button onClick={this.props.deleteRecipe.bind(null, this.props.name)}>Delete</button>
+                <button onClick={this.props.deleteRecipe.bind(null, this.props.recipe.name)}>Delete</button>
             </div>
         )
     }
@@ -73,8 +74,9 @@ var RecipeBox = React.createClass({
             </div>
         )
     },
-    deleteRecipe: function(recipeIndex){
+    deleteRecipe: function(recipeName){
         var newList = this.state.recipes;
+        var recipeIndex = newList.findIndex((recipe)=>recipe.name == recipeName);
         newList.splice(recipeIndex, 1);
         this.setState({recipes: newList});
     },
