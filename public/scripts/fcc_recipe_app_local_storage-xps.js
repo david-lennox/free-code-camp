@@ -117,8 +117,9 @@ var Recipe = React.createClass({
 
 var RecipeBook = React.createClass({
     getRecipes: function(){
-        // TODO - confirm received data is in the correct format.
-        //this.setState({recipes: JSON.parse(localStorage.getItem("_dave004_recipes"))});
+        var firstRecipes = JSON.parse(localStorage.getItem("_dave004_recipes"));
+        if(!firstRecipes[0] || !firstRecipes[0].name.length) firstRecipes = this.getFirstRecipes();
+        this.setState({recipes: firstRecipes});
     },
 
     getInitialState: function(){
@@ -126,8 +127,7 @@ var RecipeBook = React.createClass({
     },
 
     componentWillMount: function(){
-        var firstRecipes = this.getFirstRecipes();
-        this.setState({recipes: firstRecipes})
+        this.getRecipes();
     },
 
     makeCurrent: function(index){
@@ -141,12 +141,13 @@ var RecipeBook = React.createClass({
         var newList = this.state.recipes;
         newList[this.state.editingRecipeIndex].name = evt.target.value;
         this.setState({recipes: newList});
-        // TODO - update localStorage and persist to database.
+        localStorage.setItem('_dave004_recipes', JSON.stringify(newList));
     },
     currentDescriptionChange: function(evt){
         var newList = this.state.recipes;
         newList[this.state.editingRecipeIndex].description = evt.target.value;
         this.setState({recipes: newList});
+        localStorage.setItem('_dave004_recipes', JSON.stringify(newList));
     },
 
     render: function(){
@@ -231,6 +232,7 @@ var RecipeBook = React.createClass({
             var newList = this.state.recipes; 
             newList.unshift({name: newName, ingredients: [], description: ""});
             this.setState({recipes: newList, newRecipe: '', showNewRecipeForm: false, editingRecipeIndex: 0, currentRecipeIndex: 0 });
+            localStorage.setItem('_dave004_recipes', JSON.stringify(newList));
         }
     },
     addIngredient: function(ingredient){
@@ -239,17 +241,20 @@ var RecipeBook = React.createClass({
         newList[this.state.editingRecipeIndex].ingredients.push(ingredient);
         // TODO change this to use the React update libary, rather than replacing the entire list.
         this.setState({recipes: newList});
+        localStorage.setItem('_dave004_recipes', JSON.stringify(newList));
     },
     deleteRecipe: function(){
         var newList = this.state.recipes;
         //var recipeIndex = newList.findIndex((recipe)=>recipe.name == recipeName); // No need to pass down the name if we keep track of the Recipe being edited.
         newList.splice(this.state.editingRecipeIndex, 1);
         this.setState({recipes: newList, editingRecipeIndex: -1, currentRecipeIndex: -1});
+        localStorage.setItem('_dave004_recipes', JSON.stringify(newList));
     },
     deleteIngredient: function(index){
         var newList = this.state.recipes;
         newList[this.state.editingRecipeIndex].ingredients.splice(index, 1);
         this.setState({recipes: newList});
+        localStorage.setItem('_dave004_recipes', JSON.stringify(newList));
     },
     stopEditing: function(){
         this.setState({currentRecipeIndex: -1, editingRecipeIndex: -1})
