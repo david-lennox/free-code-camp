@@ -86,3 +86,14 @@ ul {
 .handCursor {
   cursor: pointer;
 }
+
+.description {
+  max-width: 700px;
+  min-width: 350px;
+  min-height: 100px;
+}
+
+.rightleftmargin {
+  margin-left: 20px;
+  margin-right: 20px;
+}

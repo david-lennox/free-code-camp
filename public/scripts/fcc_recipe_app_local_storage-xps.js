@@ -32,7 +32,7 @@ var Ingredient = React.createClass({
         <div key={this.props.ingredient}>                            
             <li>
                 {this.props.editing ? 
-                    <i className="fa fa-minus" style={{color: "red"}}></i> 
+                    <i className="fa fa-minus" style={{color: "red"}} onClick={this.props.deleteIngredient.bind(null, this.props.index)}></i> 
                     : null}
                 <span className="ingredient">{this.props.ingredient}</span>
             </li>
@@ -57,18 +57,39 @@ var RecipeEditor = React.createClass({
     render: function(){
         return (
             <div className="recipeEditor">
-                <div>Name: <input 
+                <h3>{this.props.recipe.name}
+                    <span className="rightleftmargin"><button onClick={this.props.stopEditing} className='btn btn-success btn-sm'>Save</button></span>
+                    <span><button onClick={this.props.deleteRecipe} className='btn btn-danger btn-sm'>Delete</button></span>
+                </h3>
+                <h4>Recipe Name</h4> 
+                <input 
                     type="text" 
                     value={this.props.recipe.name} 
                     onChange={this.props.currentRecipeNameChange} 
-                /></div>
-                <div>Description: <textarea 
+                />
+                <h4>Description</h4> 
+                <textarea 
+                    className="description"
                     value={this.props.recipe.description} 
                     onChange={this.props.currentDescriptionChange}
-                /></div>
-                <ul>{this.props.ingredients}</ul>
+                />
+                <ul>{this.props.ingredients}</ul>                
+                <input type="text"
+                    className="add-ingredient"
+                    placeholder="Add ingredient - press Enter to insert..."
+                    onKeyPress={this.checkInputKeyPress}
+                    style={{float: "left"}}
+                />  
+                
+                   
             </div>
         )
+    },
+    checkInputKeyPress: function(evt){
+        if(evt.key === 'Enter'){
+        this.props.addIngredient(evt.target.value);
+        evt.target.value = '';
+        }
     }
 });
 
@@ -88,27 +109,9 @@ var Recipe = React.createClass({
                             <p>{this.props.recipe.description}</p>
                             <ul>{this.props.ingredients}</ul>
                         </div>
-                ) : null}                
-                {this.props.editing ? (
-                    <div>
-                        <input type="text"
-                            className="add-ingredient"
-                            placeholder="Add ingredient - press Enter to insert..."
-                            onKeyPress={this.checkInputKeyPress}
-                            style={{float: "left"}}
-                        />  
-                        <a onClick={this.props.deleteRecipe.bind(null, this.props.recipe.name)} style={{float: "right", cursor: "pointer"}}>Delete Recipe</a>
-                    </div>
-                    )
-                : null}             
+                ) : null}             
             </div>
         )
-    },
-    checkInputKeyPress: function(evt){
-        if(evt.key === 'Enter'){
-        this.props.addIngredient(this.props.recipe.name, evt.target.value);
-        evt.target.value = '';
-        }
     }
 });
 
@@ -128,7 +131,8 @@ var RecipeBook = React.createClass({
     },
 
     makeCurrent: function(index){
-        this.setState({currentRecipeIndex: index, editingRecipeIndex: -1})
+        if(index === this.state.currentRecipeIndex) this.setState({currentRecipeIndex: -1})
+        else this.setState({currentRecipeIndex: index, editingRecipeIndex: -1})
     },
     makeEditable: function(index){
         this.setState({editingRecipeIndex: index, currentRecipeIndex: index })
@@ -150,16 +154,21 @@ var RecipeBook = React.createClass({
         if(this.state.recipes != null){
             var recipes = this.state.recipes.map(function(recipe, index){
 
-                    var editing = self.state.editingRecipeIndex === index;
+                var editing = self.state.editingRecipeIndex === index;
 
-                    if(recipe.ingredients.length > 0) {
-                                var ingredients = recipe.ingredients.map(function(ingredient, i){
-                                return <Ingredient key={ingredient} ingredient={ingredient} editing={editing} index={i} />
-                            }
-                        );
-                    }
+                if(recipe.ingredients.length > 0) {
+                    var ingredients = recipe.ingredients.map(function(ingredient, i){
+                    return <Ingredient 
+                                key={ingredient} 
+                                ingredient={ingredient} 
+                                editing={editing} 
+                                index={i} 
+                                deleteIngredient={self.deleteIngredient} />
+                        }
+                    );
+                }
 
-                    else var ingredients = "Not much of a recipe with no ingredients!"
+                else var ingredients = "Not much of a recipe with no ingredients!"
 
                 return (
                     <div className="recipes" key={index}>
@@ -172,6 +181,7 @@ var RecipeBook = React.createClass({
                                 currentRecipeNameChange={self.currentRecipeNameChange} 
                                 currentDescriptionChange={self.currentDescriptionChange}
                                 ingredients={ingredients}
+                                stopEditing={self.stopEditing}
                             />
                             
                         ) : (
@@ -184,6 +194,7 @@ var RecipeBook = React.createClass({
                                 ingredients={ingredients}
                             />                                            
                         ) }
+                        <hr/>
                     </div>
                 )
             });
@@ -198,13 +209,18 @@ var RecipeBook = React.createClass({
                         newRecipeFieldChange={this.newRecipeFieldChange} 
                         checkNewRecipeEnterKey={this.checkNewRecipeEnterKey}
                     /> : null }                
-                <h1>Recipes<i onClick={this.toggleNewRecipeField} className="fa fa-plus green padleft handCursor"></i></h1>
-                {recipes}                
+                <h1>Recipes
+                    {this.state.showNewRecipeForm === false ? <i 
+                        className={'padleft handCursor fa fa-plus green '}
+                        onClick={this.toggleNewRecipeField} >
+                    </i> : null }
+                </h1>
+                {recipes} 
             </div>
         )
     },
     toggleNewRecipeField: function(){
-        this.setState({showNewRecipeForm: !this.state.showNewRecipeForm})
+        this.setState({showNewRecipeForm: !this.state.showNewRecipeForm, currentRecipeIndex: -1, editingRecipeIndex: -1})
     },
     newRecipeFieldChange: function(evt){
         this.setState({newRecipe: evt.target.value});
@@ -213,22 +229,30 @@ var RecipeBook = React.createClass({
         if(evt.key === 'Enter'){
             var newName = this.state.newRecipe;
             var newList = this.state.recipes; 
-            newList.push({name: newName, ingredients: [], description: ""});
-            this.setState({recipes: newList, newRecipe: '', showNewRecipeForm: false });
+            newList.unshift({name: newName, ingredients: [], description: ""});
+            this.setState({recipes: newList, newRecipe: '', showNewRecipeForm: false, editingRecipeIndex: 0, currentRecipeIndex: 0 });
         }
     },
-    addIngredient: function(recipeName, ingredient){
+    addIngredient: function(ingredient){
         var newList = this.state.recipes;
-        var recipeIndex = newList.findIndex((recipe)=>recipe.name == recipeName);
-        newList[recipeIndex].ingredients.push(ingredient);
+        //var recipeIndex = newList.findIndex((recipe)=>recipe.name == recipeName);
+        newList[this.state.editingRecipeIndex].ingredients.push(ingredient);
         // TODO change this to use the React update libary, rather than replacing the entire list.
         this.setState({recipes: newList});
     },
-    deleteRecipe: function(recipeName){
+    deleteRecipe: function(){
         var newList = this.state.recipes;
-        var recipeIndex = newList.findIndex((recipe)=>recipe.name == recipeName);
-        newList.splice(recipeIndex, 1);
+        //var recipeIndex = newList.findIndex((recipe)=>recipe.name == recipeName); // No need to pass down the name if we keep track of the Recipe being edited.
+        newList.splice(this.state.editingRecipeIndex, 1);
+        this.setState({recipes: newList, editingRecipeIndex: -1, currentRecipeIndex: -1});
+    },
+    deleteIngredient: function(index){
+        var newList = this.state.recipes;
+        newList[this.state.editingRecipeIndex].ingredients.splice(index, 1);
         this.setState({recipes: newList});
+    },
+    stopEditing: function(){
+        this.setState({currentRecipeIndex: -1, editingRecipeIndex: -1})
     },
 
     getFirstRecipes: function() {
