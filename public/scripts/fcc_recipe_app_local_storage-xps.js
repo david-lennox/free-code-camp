@@ -14,15 +14,12 @@
  * in the arguments without actually calling the function. The bind function returns a new function that 
  * will be called with the specified arguments.
  * 
- * DATA STRUCTURE:
  * The code is coupled to the data structure, which is described by example in getInitialRecipes().
  * 
+ * Note the React method of accessing a component to set the focus. `ReactDOM.findDOMNode(this.refs.refName).focus()`.
+ * Note also we can apply focus to an input with the autoFocus property - used in this file also.
+ * 
  * TODO:
- *  - Create a RecipeEditor class that will be used instead of the Recipe class when the (yet to be created)
- *    this.state.editingIndex property is included.
- *  - Have the fa-minus icons show up only in RecipeEditor component.
- *  - Show / hide ingredients by clicking on the Recipe title.
- *  - Edit ingredients (not essential)
  *  - Replace newList method of updating state. Use the react immutable helper addon update() method.
  */
 
@@ -32,7 +29,9 @@ var Ingredient = React.createClass({
         <div key={this.props.ingredient}>                            
             <li>
                 {this.props.editing ? 
-                    <i className="fa fa-minus" style={{color: "red"}} onClick={this.props.deleteIngredient.bind(null, this.props.index)}></i> 
+                    <i className="fa fa-trash handCursor" 
+                        onClick={this.props.deleteIngredient.bind(null, this.props.index)}>
+                    </i> 
                     : null}
                 <span className="ingredient">{this.props.ingredient}</span>
             </li>
@@ -44,13 +43,22 @@ var NewRecipeForm = React.createClass({
     render: function(){
         return (
             <div className="newRecipe">
-                    Name of new recipe: <input type="text" 
+                    <label>New recipe: </label>
+                    <input type="text" 
                         value={this.props.newRecipe} 
                         onChange={this.props.newRecipeFieldChange} 
-                        onKeyPress={this.props.checkNewRecipeEnterKey}/>
+                        onKeyPress={this.props.checkNewRecipeEnterKey}
+                        ref="newRecipeField"
+                        className="leftMargin"
+                        />
+                    <button onClick={this.props.toggleNewRecipeField} className="btn btn-danger leftMargin">Cancel</button>
+
                 </div>
         )
-    }
+    },
+    componentDidMount: function(){
+        ReactDOM.findDOMNode(this.refs.newRecipeField).focus(); 
+    },
 });
 
 var RecipeEditor = React.createClass({
@@ -67,21 +75,21 @@ var RecipeEditor = React.createClass({
                     value={this.props.recipe.name} 
                     onChange={this.props.currentRecipeNameChange} 
                 />
+                <h4>Ingredients</h4>
+                <ul>{this.props.ingredients}</ul>                
+                <input type="text"
+                    className="add-ingredient"
+                    placeholder="Add ingredient - press Enter to insert..."
+                    onKeyPress={this.checkInputKeyPress}
+                    autoFocus
+                /> 
                 <h4>Description</h4> 
                 <textarea 
                     className="description"
                     value={this.props.recipe.description} 
                     onChange={this.props.currentDescriptionChange}
                 />
-                <ul>{this.props.ingredients}</ul>                
-                <input type="text"
-                    className="add-ingredient"
-                    placeholder="Add ingredient - press Enter to insert..."
-                    onKeyPress={this.checkInputKeyPress}
-                    style={{float: "left"}}
-                />  
-                
-                   
+                                
             </div>
         )
     },
@@ -102,12 +110,12 @@ var Recipe = React.createClass({
             <div style={{clear: "both"}} id={this.props.recipe.name} className='recipe'>
                 <h3>
                     <span className="handCursor" onClick={this.props.makeCurrent}>{this.props.recipe.name}</span>
-                    <i className="fa fa-pencil padleft handCursor" onClick={this.props.makeEditable}></i>
+                    <i className={this.props.currentRecipe ? "fa fa-pencil leftMargin handCursor" : ""} onClick={this.props.makeEditable}></i>
                 </h3>          
                 {this.props.currentRecipe  ? (
                         <div className='recipeDetails'>
-                            <p>{this.props.recipe.description}</p>
                             <ul>{this.props.ingredients}</ul>
+                            <p>{this.props.recipe.description}</p>
                         </div>
                 ) : null}             
             </div>
@@ -118,7 +126,13 @@ var Recipe = React.createClass({
 var RecipeBook = React.createClass({
     getRecipes: function(){
         var firstRecipes = JSON.parse(localStorage.getItem("_dave004_recipes"));
-        if(!firstRecipes[0] || !firstRecipes[0].name.length) firstRecipes = this.getFirstRecipes();
+        try {
+            var recipesLength = firstRecipes[0].name.length;
+        } catch (error) {
+            console.log(error);
+            console.log("No recipes in the localStorage");
+            firstRecipes = this.getFirstRecipes();
+        }
         this.setState({recipes: firstRecipes});
     },
 
@@ -209,10 +223,13 @@ var RecipeBook = React.createClass({
                         newRecipe={this.newRecipe} 
                         newRecipeFieldChange={this.newRecipeFieldChange} 
                         checkNewRecipeEnterKey={this.checkNewRecipeEnterKey}
+                        toggleNewRecipeField={this.toggleNewRecipeField}
                     /> : null }                
                 <h1>Recipes
                     {this.state.showNewRecipeForm === false ? <i 
-                        className={'padleft handCursor fa fa-plus green '}
+                        className='leftMargin handCursor fa fa-plus green'
+                        data-toggle="tooltip" 
+                        title="New recipe"
                         onClick={this.toggleNewRecipeField} >
                     </i> : null }
                 </h1>
