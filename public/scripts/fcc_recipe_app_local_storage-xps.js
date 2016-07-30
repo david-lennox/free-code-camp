@@ -183,7 +183,7 @@ var RecipeBook = React.createClass({
                     );
                 }
 
-                else var ingredients = "Not much of a recipe with no ingredients!"
+                else var ingredients = <p className="warning">Please add some ingredients!</p>
 
                 return (
                     <div className="recipes" key={index}>

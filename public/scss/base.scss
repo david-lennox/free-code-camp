@@ -3,6 +3,7 @@ $bg: #fff;
 $delete-color: red;
 $app-margin: auto;
 $app-width: 650px;
+$warning-color: red;
 
 body {
   background: $bg;
@@ -118,4 +119,8 @@ label {
 .recipeBook {
   margin: $app-margin;
   max-width: $app-width;
+}
+
+.warning {
+  color: $warning-color;
 }

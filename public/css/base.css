@@ -91,3 +91,6 @@ label {
 .recipeBook {
   margin: auto;
   max-width: 650px; }
+
+.warning {
+  color: red; }
