@@ -31,7 +31,7 @@ var Cell = React.createClass({
                 height={CONFIG.cellHeight} 
                 fill={CONFIG.colors[this.props.status]}
                 stroke="black"
-                stroke-width="2"
+                strokeWidth="2"
                 onClick={this.props.bringToLife.bind(null, this.props.x, this.props.y)}
                 />
     }
@@ -60,8 +60,6 @@ var GameOfLife = React.createClass({
                     />
                 )
             ).reduce((prev, curr) => prev.concat(curr))
-
-            debugger;
         
         return (
             <div className="board">
@@ -72,7 +70,9 @@ var GameOfLife = React.createClass({
         );
     },
     bringToLife: function(x, y){
-        // Bring cell x-y to life.
+        var newCells = this.state.cells;
+        newCells[y][x].status = "alive";
+        this.setState({cells: newCells});
     }
 });
 
