@@ -9,6 +9,8 @@
  * 
  */
 
+var update = require('react-addons-update');
+
 const CONFIG = {
     cellWidth: 10,
     cellHeight: 10,
@@ -24,7 +26,7 @@ const CONFIG = {
 
 var Cell = React.createClass({
     render: function(){
-        return <rect className='cell'
+        return (<rect className='cell'
                 x={this.props.x * CONFIG.cellWidth}
                 y={this.props.y * CONFIG.cellHeight}
                 width={CONFIG.cellWidth} 
@@ -33,7 +35,7 @@ var Cell = React.createClass({
                 stroke="black"
                 strokeWidth="2"
                 onClick={this.props.bringToLife.bind(null, this.props.x, this.props.y)}
-                />
+                />)
     }
 });
 
@@ -70,9 +72,14 @@ var GameOfLife = React.createClass({
         );
     },
     bringToLife: function(x, y){
-        var newCells = this.state.cells;
-        newCells[y][x].status = "alive";
-        this.setState({cells: newCells});
+        //var newCells = this.state.cells;
+        //newCells[y][x].status = "alive";
+
+        var start = Date.now();
+        var spliceCmd = {};
+        spliceCmd[y] = {$splice: [[x, 1, {x: x, y: y, status: 'alive'}]]};
+        var newCells = update(this.state.cells, spliceCmd);
+        this.setState({cells: newCells}, () => console.log(Date.now() - start));
     }
 });
 
