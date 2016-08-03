@@ -25,7 +25,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
     "build-css": "node-sass --include-path scss public/scss/base.scss public/css/base.css",
-    "watch-css": "nodemon -e scss -x \"npm run build-css\"",
+    "watch-css": "nodemon -e scss -x \"npm run build-css\""
   },
   "repository": {
     "type": "git",
