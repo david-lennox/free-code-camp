@@ -1,7 +1,9 @@
 module.exports = {
-  entry: "./public/scripts/fcc_game_of_life.jsx",
+  entry: "./scripts/fcc_game_of_life.jsx",
   output: {
-    filename: "./public/build/bundle.js"
+    path: "./public/build",
+    publicPath: "/public/build/",
+    filename: "bundle.js"
   },
  module: {
    loaders: [

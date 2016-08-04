@@ -5,3 +5,4 @@ node_modules
 *.njsproj
 *.sln
 public/build/
+build/
