@@ -17,24 +17,23 @@ const CONFIG = {
     gameWidth: 50,
     gameHeight: 50,
     speed: 1000, // miliseconds per generation.
-    colors: {
-        alive: "blue",
-        fading: "orange", 
-        dead: "grey"
-    }
+    // Colors represent dead, fading, or alive.
+    colors: ['grey', 'orange', 'blue']
 }
 
 var Cell = React.createClass({
     render: function(){
-        return (<rect className='cell'
-                x={this.props.x * CONFIG.cellWidth}
-                y={this.props.y * CONFIG.cellHeight}
+        var x = this.props.index % CONFIG.gameWidth;
+        var y = (this.props.index - x) / CONFIG.gameWidth
+        return (<rect className='cell'                
+                x={x * CONFIG.cellWidth}
+                y={y * CONFIG.cellHeight}
                 width={CONFIG.cellWidth} 
                 height={CONFIG.cellHeight} 
                 fill={CONFIG.colors[this.props.status]}
                 stroke="black"
                 strokeWidth="2"
-                onClick={this.props.bringToLife.bind(null, this.props.x, this.props.y)}
+                onClick={this.props.bringToLife.bind(null, this.props.index)}
                 />)
     }
 });
@@ -44,42 +43,67 @@ var GameOfLife = React.createClass({
     getInitialState: function(){
         var newCells = [];
         for(var y = 0; y < CONFIG.gameHeight; y++){
-            newCells[y] = []
-            for(var x=0; x< 50; x++){
-                newCells[y][x] = {x: x, y: y, status: "dead"};
+            //newCells[y] = []
+            for(var x=0; x < CONFIG.gameWidth; x++){
+                var i = y * CONFIG.gameHeight + x;
+                newCells[i] = 0;
             }
         }
         return {cells: newCells, generation: 0, continue: false};
     },
 
     render: function(){
-        var cellEls = this.state.cells.map(cellRow => cellRow.map(
-                cell => <Cell key={`${cell.x}-${cell.y}`} 
-                    x={cell.x} 
-                    y={cell.y} 
-                    status={cell.status}
-                    bringToLife={this.bringToLife}
+        var cellEls = this.state.cells.map((cell, index) => <Cell 
+                            key={index} 
+                            status={cell}
+                            bringToLife={this.bringToLife}
+                            index={index}
                     />
-                )
-            ).reduce((prev, curr) => prev.concat(curr))
+                );
         
         return (
             <div className="board">
                 <svg width={CONFIG.gameWidth * CONFIG.cellWidth} height={CONFIG.gameHeight * CONFIG.cellHeight}>
                     {cellEls}
                 </svg>
+                <button onClick={this.randomizeBoard}>Randomize</button>
+                <button onClick={this.startStop}>Toggle Start</button>
             </div>
         );
     },
-    bringToLife: function(x, y){
-        //var newCells = this.state.cells;
-        //newCells[y][x].status = "alive";
+    bringToLife: function(i){
+
+        // PERFORMANCE DIFFERENCE BETWEEN THESE TWO IMPLEMENTATIONS IS NEGLIGIBLE
+        // The `update` method is about 20ms faster, which is only about 10% improvement. 
+        // Both methods are too slow - taking about 220 - 300ms to update a single square.
 
         var start = Date.now();
-        var spliceCmd = {};
-        spliceCmd[y] = {$splice: [[x, 1, {x: x, y: y, status: 'alive'}]]};
-        var newCells = update(this.state.cells, spliceCmd);
-        this.setState({cells: newCells}, () => console.log(Date.now() - start));
+
+        var newCells = this.state.cells;
+        newCells[i] = 2;
+
+        console.log(`Finding and updating the cell took ${Date.now() - start} miliseconds`);
+        
+        // var spliceCmd = {};
+        // spliceCmd[y] = {$splice: [[x, 1, {x: x, y: y, status: 'alive'}]]};
+        //var newCells = update(this.state.cells, spliceCmd);
+        this.setState({cells: newCells}, () => console.log(`Call to setState took ${Date.now() - start} miliseconds... too long!`));
+    },
+    randomizeBoard: function(){
+        var self = this;
+        var start = Date.now();
+        var newCells = this.state.cells.map(cellRow => {
+                var r = Math.random();
+                return r > 0.66 ? 2 : r > 0.33 ? 1 : 0
+            });
+        self.setState({cells: newCells}, () => {if(self.state.continue) 
+            console.log(`radmonize re-render took ${Date.now() - start} miliseconds.`)
+            self.randomizeBoard()});      
+    },
+    startStop: function(){
+        this.setState({continue: !this.state.continue}, function(){
+            if(this.state.continue) this.randomizeBoard();
+        });
     }
 });
 
