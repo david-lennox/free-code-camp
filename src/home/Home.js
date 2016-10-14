@@ -44,6 +44,10 @@ class Home extends Component {
                     <td><Link to="/calculator">Calculator App</Link></td>
                     <td className="urgent">INCOMPLETE!</td>
                 </tr>
+                <tr>
+                    <td><Link to="/d3chart">D3 Chart Real Simple</Link></td>
+                    <td className="urgent">Technique is to import the D3 chart and render it into the DOM in componentDidMount.</td>
+                </tr>
                 </tbody>
             </table>
 
