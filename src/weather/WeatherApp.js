@@ -1,17 +1,6 @@
 import React from 'react';
 import $ from 'jquery';
-import FontAwesome from 'react-fontawesome';
-
-var allowableCities = [
-    {id: "x8", name: "Sydney"},
-    {id: "x1", name: "Canberra"},
-    {id: "x2", name: "Brisbane"},
-    {id: "x3", name: "Melbourne"},
-    {id: "x4", name: "New York"},
-    {id: "x5", name: "Perth"},
-    {id: "x6", name: "London"},
-    {id: "x7", name: "Paris"}
-];
+import '../../node_modules/weather-icons/css/weather-icons.min.css';
 
 var apiId = "4b5b363b9217c53df50903d81473758e";
 
@@ -31,7 +20,7 @@ export default React.createClass({
             dataType: "Json",
             context: this,
             url: "http://api.openweathermap.org/data/2.5/weather",
-            data: this.state.city === "unspecified" ?
+            data: this.state.city === "your location" ?
             {lat: this.state.lat, lon: this.state.lon, appid: apiId} :
             {q: this.state.city, appid: apiId},
             success: function(result){
@@ -40,13 +29,17 @@ export default React.createClass({
                 this.setState({
                     tempC: result.main.temp -273.15,
                     tempF: result.main.temp * 9/5 - 459.67,
-                    rain: precip
+                    rain: result.rain ? result.rain[Object.keys(result.rain)[0]] + "mm in " + Object.keys(result.rain)[0]: 0,
+                    lat: result.coord.lat,
+                    lon: result.coord.lon,
+                    weatherIcon: result.main.temp > 295 ? 'wi wi-day-sunny' : 'wi wi-day-cloudy',
+                    rainIcon: result.rain ? 'wi wi-rain' : ''
                 });
             }
         });
     },
     getInitialState: function() {
-        return {lat: null, lon: null, city: 'unspecified', tempC: '', tempF: '', rain: '', cityField: '', scale: "celcius"};
+        return {lat: null, lon: null, city: 'your location', tempC: '', tempF: '', rain: '', cityField: '', scale: "celcius"};
     },
     componentDidMount: function() {
         // REMEMBER THE CONTEXT CHANGES WHEN WE ENTER A 3RD PARTY FUNCTION
@@ -66,43 +59,32 @@ export default React.createClass({
         console.log("handling submit...");
         e.preventDefault();
         var newCity =  this.state.cityField;
-        if(!allowableCities.filter(function (city) {return city.name === newCity;})[0]) {
-            alert("City must be chosen from the below list.");
-            return;
-        }
         this.setState({cityField: '', city: newCity}, this.updateData);
-
     },
     handleCityFieldChange: function(e) {
         this.setState({cityField: e.target.value});
     },
 
     render: function() {
-        var allowableCityList = allowableCities.map(function(city){
-            return (
-                <City key={city.id} name={city.name} />
-            )
-        });
         return (
             <div className="weatherBox">
-                <h1>Free Code Camp Weather App</h1>
+                <h1>Weather in {this.state.city} <i className={this.state.weatherIcon}></i> <i className={this.state.rainIcon}></i></h1>
                 <table className="table">
                     <tbody>
-                    <tr>
-                        <td>City</td><td>{this.state.city}</td>
-                    </tr>
                     <tr>
                         <td>Temperature</td>
                         <td>{this.state.scale === "celcius" ?
                             Math.round((this.state.tempC * 10)/10) :
                             Math.round((this.state.tempF * 10)/10)}
                             &nbsp;{this.state.scale} &nbsp;&nbsp;
-                            <FontAwesome name="sun-o" />  &nbsp;&nbsp;
-                            <span onClick={this.changeTempScale}  style={{fontSize: '10px', cursor: 'pointer'}}>Change to {this.state.scale === "celcius" ? "farenheight" : "celcius"} </span>
+                            <span onClick={this.changeTempScale}
+                                  style={{fontSize: '10px', cursor: 'pointer'}}>
+                                Change to {this.state.scale === "celcius" ? "farenheight" : "celcius"}
+                                </span>
                         </td>
                     </tr>
                     <tr>
-                        <td>Rainfall</td><td>{this.state.rain}mm in the last 1 hour</td>
+                        <td>Rainfall</td><td>{this.state.rain}</td>
                     </tr>
                     <tr>
                         <td>longitude</td><td>{this.state.lon}</td>
@@ -117,11 +99,6 @@ export default React.createClass({
                        placeholder="City Name" />
                 <button className="button"
                         onClick={this.changeCity}>Change City</button>
-                <br/>
-                <h3>Allowable Cities</h3>
-                <ul>
-                    {allowableCityList}
-                </ul>
             </div>
         );
     }

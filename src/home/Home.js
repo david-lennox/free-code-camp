@@ -1,5 +1,7 @@
 import React, { Component } from 'react'
 import { Link } from 'react-router';
+import tocData from './contentSummaryData';
+
 import '../../node_modules/bootstrap/dist/css/bootstrap.css';
 import '../../css_libraries/font-awesome/css/font-awesome.min.css';
 
@@ -7,15 +9,19 @@ import './Home.css'
 
 // Todo: Have an array of FCC exercise metadata that populates a bunch of ContentRow items.
 
-class ContentRow extends Component {
+// Table of Contents (TOC) Row
+class TOCRow extends Component {
     render() {
-
+        const {title, description, link} = this.props.item;
+        return <tr><td><Link to={link}>{title}</Link></td><td>{description}</td></tr>
     }
 }
 
-
 class Home extends Component {
   render() {
+
+      let tocRows = tocData.map(c => <TOCRow key={c.title} item={c}/>);
+
         return (
           <div className="Home">
             <table className="table">
@@ -23,14 +29,6 @@ class Home extends Component {
                 <tr>
                   <td><Link to="/about">About</Link></td>
                   <td>The about page explains how this experiment application works.</td>
-              </tr>
-              <tr>
-                  <td><Link to="/weather">FCC Weather App</Link></td>
-                  <td>The Weather App includes an ajax call using jQuery</td>
-              </tr>
-                <tr>
-                    <td><Link to="/leaderboard">FCC Leaderboard App</Link></td>
-                    <td>Queries the Github API and presents list of top users. Currently uses jQuery.</td>
                 </tr>
                 <tr>
                     <td><Link to="/recipes">FCC Recipe App</Link></td>
@@ -48,6 +46,7 @@ class Home extends Component {
                     <td><Link to="/d3chart">D3 Chart Real Simple</Link></td>
                     <td className="urgent">Technique is to import the D3 chart and render it into the DOM in componentDidMount.</td>
                 </tr>
+                {tocRows}
                 </tbody>
             </table>
 
