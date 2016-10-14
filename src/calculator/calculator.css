@@ -1,0 +1,16 @@
+.calculator {
+    margin: auto;
+    width: 50%;
+    border: 3px solid green;
+    padding: 10px;
+}
+
+.calc-button {
+    width: 80px;
+    height: 80px;
+    color: green;
+    cursor: pointer;
+    border: 2px solid black;
+    text-align: center;
+}
+
