@@ -24,12 +24,7 @@ var City = React.createClass({
 
 export default React.createClass({
     changeTempScale: function(){
-        if(this.state.scale === "celcius"){
-            this.setState({scale:  "farenheight"});
-        }
-        else{
-            this.setState({scale: "celcius"});
-        }
+        this.setState({scale: this.state.scale === "celcius" ? "farenheight" : "celcius"})
     },
     updateData: function() {
         $.ajax({
@@ -101,7 +96,7 @@ export default React.createClass({
                         <td>{this.state.scale === "celcius" ?
                             Math.round((this.state.tempC * 10)/10) :
                             Math.round((this.state.tempF * 10)/10)}
-                            {this.state.scale} &nbsp;&nbsp;
+                            &nbsp;{this.state.scale} &nbsp;&nbsp;
                             <FontAwesome name="sun-o" />  &nbsp;&nbsp;
                             <span onClick={this.changeTempScale}  style={{fontSize: '10px', cursor: 'pointer'}}>Change to {this.state.scale === "celcius" ? "farenheight" : "celcius"} </span>
                         </td>
