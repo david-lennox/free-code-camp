@@ -9,10 +9,10 @@ export default React.createClass({
         for (var i = 0; i < gameHeight; i++){
             cellArr[i] = [];
             for(var j = 0; j < gameWidth; j++){
-                cellArr[i][j] = Math.random() > 0.9 ? 1 : 0;
+                cellArr[i][j] = Math.random() > 0.8 ? 1 : 0;
             }
         }
-        return {cellArr: cellArr, runSimulation: false, speed: 200}
+        return {cellArr: cellArr, runSimulation: false, speed: 200, generation: 0}
     },
     render(){
 
@@ -34,7 +34,7 @@ export default React.createClass({
                     newArr[rowIndex][columnIndex] = newArr[rowIndex][columnIndex] === 1 ? 0 : 1;
                     this.setState({cellArr: newArr})
                 }
-                }/>
+                }></div>
             });
             return rowCells
         });
@@ -52,6 +52,7 @@ export default React.createClass({
         this.setState({runSimulation: true}, () => this.getNextArray(this.state.cellArr));
     },
     getNextArray(cellArray){
+        var startTrans = Date.now();
         var self = this;
         if(!self.state.runSimulation) return;
         var nextArray = [];
@@ -87,9 +88,13 @@ export default React.createClass({
                 else if(cellScore === 3) nextArray[i][j] = 1;
                 else if(cellScore <2) nextArray[i][j] = 0;
                 else nextArray[i][j] = cellArray[i][j]; // Line not required because they are copied up top.
+
             }
         }
-        self.setState({cellArr: nextArray}, () => {setTimeout(() => {self.getNextArray(nextArray);}, self.state.speed)});
+        console.log(Date.now() - startTrans);
+        self.setState({cellArr: nextArray, generation: this.state.generation + 1}, () => {
+            console.log(Date.now() - startTrans);
+            setTimeout(() => {self.getNextArray(nextArray);}, self.state.speed)});
     }
 });
 
