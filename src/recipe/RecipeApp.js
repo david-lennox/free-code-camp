@@ -24,6 +24,7 @@
  */
 
 import React from 'react';
+import './recipeStyles.css';
 
 var Ingredient = React.createClass({
     render: function(){
@@ -31,9 +32,9 @@ var Ingredient = React.createClass({
         <div key={this.props.ingredient}>                            
             <li>
                 {this.props.editing ? 
-                    <i className="fa fa-trash handCursor" 
+                    <span><i className="fa fa-trash handCursor"
                         onClick={this.props.deleteIngredient.bind(null, this.props.index)}>
-                    </i> 
+                    </i>&nbsp;&nbsp;</span>
                     : null}
                 <span className="ingredient">{this.props.ingredient}</span>
             </li>
@@ -67,9 +68,9 @@ var RecipeEditor = React.createClass({
     render: function(){
         return (
             <div className="recipeEditor">
-                <h3>{this.props.recipe.name}
+                <h3>{this.props.recipe.name}&nbsp;&nbsp;
                     <span className="rightleftmargin"><button onClick={this.props.stopEditing} className='btn btn-success btn-sm'>Save</button></span>
-                    <span><button onClick={this.props.deleteRecipe} className='btn btn-danger btn-sm'>Delete</button></span>
+                    <span>&nbsp;&nbsp;<button onClick={this.props.deleteRecipe} className='btn btn-danger btn-sm'>Delete</button></span>
                 </h3>
                 <h4>Recipe Name</h4> 
                 <input 
@@ -111,7 +112,7 @@ var Recipe = React.createClass({
         return (
             <div style={{clear: "both"}} id={self.props.recipe.name} className='recipe'>
                 <h3>
-                    <span className="handCursor" onClick={self.props.makeCurrent}>{self.props.recipe.name}</span>
+                    <span className="handCursor" onClick={self.props.makeCurrent}>{self.props.recipe.name}&nbsp;&nbsp;</span>
                     <i className={self.props.currentRecipe ? "fa fa-pencil leftMargin handCursor" : ""} onClick={self.props.makeEditable}></i>
                 </h3>          
                 {self.props.currentRecipe  ? (

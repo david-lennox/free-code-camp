@@ -8,6 +8,7 @@ import RecipeApp from './recipe/RecipeApp';
 import WikiSearch from './wikiSearch/WikiSearch';
 import Calculator from './calculator/Calculator';
 import D3Chart from './d3chart/D3Chart';
+import GameOfLife from './game-of-life/GameOfLife';
 
 import About from './about/About';
 import './index.css';
@@ -22,6 +23,7 @@ ReactDOM.render(
             <Route path="/wikiSearch" component={WikiSearch}/>
             <Route path="/calculator" component={Calculator}/>
             <Route path="/d3chart" component={D3Chart}/>
+            <Route path="/game-of-life" component={GameOfLife}/>
         </Route>
     </Router>,
   document.getElementById('root')

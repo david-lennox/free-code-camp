@@ -31,9 +31,8 @@ var D3Chart = React.createClass({
          var chart = d3.select("#d3chart")
             .attr("width", width + margin.left + margin.right)
             .attr("height", height + margin.top + margin.bottom)
-            .append("g")// g is for group - we want everything in this group to be shifted by the margins.
-            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
+            .append("g")// g is for group - we want everything in this group to be shifted (transformed) by the margins.
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")"); // This is ugly string interpolation that is currently necessary with D3 transform attributes.
         chart.selectAll(".bar")
             .data(data)
             .enter().append("rect")
