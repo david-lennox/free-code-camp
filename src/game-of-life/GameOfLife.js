@@ -1,100 +1,94 @@
 import React from 'react';
 
-var gameWidth = 50;
-var gameHeight = 50;
+var gameWidth = 100;
+var gameHeight = 70;
 
 export default React.createClass({
     getInitialState(){
-        var cellArr = [];
+        var cellObj = {};
         for (var i = 0; i < gameHeight; i++){
-            cellArr[i] = [];
             for(var j = 0; j < gameWidth; j++){
-                cellArr[i][j] = Math.random() > 0.8 ? 1 : 0;
+                cellObj[i + '-' + j] = Math.random() > 0.8 ? 1 : 0;
             }
         }
-        return {cellArr: cellArr, runSimulation: false, speed: 200, generation: 0}
+        return {
+            ...cellObj,
+            runSimulation: false,
+            speed: 200,
+            generation: 0}
+    },
+    handleClick(key){
+        this.setState({[key]: this.state[key] === 1 ? 0 : 1})
     },
     render(){
-
+        let {speed, generation} = this.state;
         var cellHeight = 20;
         var cellWidth = 20;
-        var rows = this.state.cellArr.map((row, rowIndex) => {
-            let rowCells = row.map((cellValue, columnIndex) => {
+
+        let cellDivs = [];
+        for(var key in this.state){
+            if(this.state.hasOwnProperty(key) && key.match(/^[0-9]{1,3}-[0-9]{1,2}$/)){
+                let x, y;
+                [x, y] = key.split('-');
                 let cellStyle={
-                    backgroundColor: cellValue === 1 ? 'green' : 'red',
+                    backgroundColor: this.state[key] === 1 ? 'green' : 'red',
                     border: 'solid 1px black',
                     position: 'absolute',
-                    top: rowIndex * cellHeight,
-                    left: columnIndex * cellWidth,
+                    top: Number(x) * cellHeight,
+                    left: Number(y) * cellWidth,
                     width: cellWidth,
                     height: cellHeight
                 };
-                return <div key={rowIndex + ' ' + columnIndex} id={rowIndex + ' ' + columnIndex} style={cellStyle} onClick={() => {
-                    var newArr = this.state.cellArr.slice();
-                    newArr[rowIndex][columnIndex] = newArr[rowIndex][columnIndex] === 1 ? 0 : 1;
-                    this.setState({cellArr: newArr})
-                }
-                }></div>
-            });
-            return rowCells
-        });
+                cellDivs.push(<div key={key} id={key} style={cellStyle} onClick={() => this.handleClick(x + '-' + y)}></div>)
+            }
+        }
 
         return (
         <div style={{position: 'relative'}}>
-            <div>{rows}</div>
+            <div>{cellDivs}</div>
             <button style={{position: 'relative'}} onClick={this.startSimulation}>Run</button>
             <button style={{position: 'relative'}} onClick={() => this.setState({runSimulation: false})}>Stop</button>
-            <button style={{position: 'relative'}} onClick={() => this.setState({speed: this.state.speed >99 ? this.state.speed - 50 : this.state.speed})}>Faster</button>
-            <button style={{position: 'relative'}} onClick={() => this.setState({speed: this.state.speed + 50})}>Slower</button>
+            <button style={{position: 'relative'}} onClick={() => this.setState({speed: speed >99 ? speed - 50 : this.state.speed})}>Faster</button>
+            <button style={{position: 'relative'}} onClick={() => this.setState({speed: speed + 50})}>Slower</button>
         </div>);
     },
     startSimulation() {
-        this.setState({runSimulation: true}, () => this.getNextArray(this.state.cellArr));
+        this.setState({runSimulation: true}, () => this.getNextArray());
     },
-    getNextArray(cellArray){
+    getNextArray(){
         var startTrans = Date.now();
         var self = this;
         if(!self.state.runSimulation) return;
-        var nextArray = [];
-        for (var i = 0; i < cellArray.length; i++){
-            nextArray[i] = [];
-            for(var j = 0; j < cellArray[i].length; j++){
-                var cellScore = 0;
-                if (i!== cellArray.length - 1) {
-                    cellScore += cellArray[i + 1][j];
-                    if (j !== 0) {
-                        cellScore += cellArray[i + 1][j - 1];
-                    }
-                    if (j !== cellArray[i].length - 1) {
-                        cellScore += cellArray[i + 1][j + 1];
-                    }
-                }
-                if(i !== 0) {
-                    cellScore += cellArray[i - 1][j];
-                    if(j !== 0) {
-                        cellScore += cellArray[i - 1][j - 1];
-                    }
-                    if(j !== cellArray[i].length - 1) {
-                        cellScore += cellArray[i - 1][j + 1];
-                    }
-                }
-                    if(j !== 0) {
-                        cellScore += cellArray[i][j - 1];
-                    }
-                    if(j !== cellArray[i].length - 1) {
-                        cellScore += cellArray[i][j + 1];
-                    }
-                if (cellScore > 3) nextArray[i][j] = 0;
-                else if(cellScore === 3) nextArray[i][j] = 1;
-                else if(cellScore <2) nextArray[i][j] = 0;
-                else nextArray[i][j] = cellArray[i][j]; // Line not required because they are copied up top.
+        var stateChanges = {};
+        for(var key in this.state){
+            if(this.state.hasOwnProperty(key) && key.match(/^[0-9]{1,3}-[0-9]{1,2}$/)){
+                let x, y;
+                [x, y] = key.split('-');
+                x=Number(x);
+                y=Number(y);
+                let score = 0;
+                let eightNeighbors = [
+                    x + '-' + (y-1),
+                    x + '-' + (y+1),
+                    (x+1) + '-' + (y-1),
+                    (x+1) + '-' + (y+1),
+                    (x+1) + '-' + (y),
+                    (x-1) + '-' + (y),
+                    (x-1) + '-' + (y+1),
+                    (x-1) + '-' + (y-1)];
 
+                for(let i=0; i < 8; i++){
+                        score += this.state[eightNeighbors[i]] || 0;
+                }
+                if (score > 3 && this.state[key] === 1) stateChanges[key] = 0;
+                else if(score === 3 && this.state[key] === 0) stateChanges[key] = 1;
+                else if(score <2 && this.state[key] === 1) stateChanges[key] = 0;
             }
         }
         console.log(Date.now() - startTrans);
-        self.setState({cellArr: nextArray, generation: this.state.generation + 1}, () => {
+        self.setState(stateChanges, () => {
             console.log(Date.now() - startTrans);
-            setTimeout(() => {self.getNextArray(nextArray);}, self.state.speed)});
+            setTimeout(() => {self.getNextArray();}, self.state.speed)});
     }
 });
 
