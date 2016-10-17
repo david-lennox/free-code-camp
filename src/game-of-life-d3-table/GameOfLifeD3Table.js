@@ -14,7 +14,8 @@ export default React.createClass({
             speed: 1000,
             generation: 0,
             gameWidth: 50,
-            gameHeight: 50
+            gameHeight: 50,
+            intervalId: -1
         }
     },
     componentWillMount(){
@@ -29,22 +30,15 @@ export default React.createClass({
         }
     },
     componentDidMount(){
+        let self = this;
         svg = d3.select("svg");
         width = +svg.attr("width");
         height = +svg.attr("height");
         g = svg.append("g").attr("transform", "translate(32," + (height / 2) + ")")
-
-        this.d3Update(alphabet);
-        // Grab a random sample of letters from the alphabet, in alphabetical order.
-        let intervalId = d3.interval(function() {
-            this.d3Update(d3.shuffle(alphabet)
-                .slice(0, Math.floor(Math.random() * 26))
-                .sort());
-        }, 500);
-        this.setState({intervalId: intervalId})
     },
 
     d3Update(data) {
+
         var t = d3.transition()
             .duration(750);
 
@@ -103,8 +97,7 @@ export default React.createClass({
             <div className="app">
                 <h1 className="h1">The D3 Component Rendered Below</h1>
                 <svg width="960" height="500" />
-                <button onClick={() => this.startSimulation()}>Run</button>
-                <button onClick={() => clearInterval(this.state.intervalId)}>Stop</button>
+                <button onClick={() => this.startSimulation()}>Start / Stop</button>
                 <button onClick={() => this.setState({speed: this.state.speed >99 ? this.state.speed - 50 : this.state.speed}, this.startSimulation())}>Faster</button>
                 <button onClick={() => this.setState({speed: this.state.speed + 50}, this.startSimulation())}>Slower</button>
                 <table id="d3GameOfLife">
@@ -114,11 +107,31 @@ export default React.createClass({
         )
     },
     startSimulation() {
-        if(this.state.runSimulation) clearInterval(this.state.intervalId);
-        this.setState({runSimulation: true}, () => {
-            var intervalId = setInterval(() => this.getNextArray(), this.state.speed);
-            this.setState({intervalId: intervalId});
-        });
+        let self = this;
+
+        if(this.state.intervalId === -1) {
+            let intervalId = setInterval(function() {
+                self.d3Update(d3.shuffle(alphabet)
+                    .slice(0, Math.floor(Math.random() * 26))
+                    .sort());
+            }, 500);
+            self.setState({intervalId: intervalId});
+        }
+
+        else {
+            clearInterval(this.state.intervalId);
+            self.setState({intervalId: -1})
+        }
+
+        // Grab a random sample of letters from the alphabet, in alphabetical order.
+
+
+
+        //if(this.state.runSimulation) clearInterval(this.state.intervalId);
+        //this.setState({runSimulation: true}, () => {
+        //    var intervalId = setInterval(() => this.getNextArray(), this.state.speed);
+        //    this.setState({intervalId: intervalId});
+        //});
     },
     getNextArray(){
         var startTrans = Date.now();
