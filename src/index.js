@@ -9,6 +9,7 @@ import WikiSearch from './wikiSearch/WikiSearch';
 import Calculator from './calculator/Calculator';
 import D3Chart from './d3chart/D3Chart';
 import GameOfLife from './game-of-life/GameOfLife';
+import GameOfLifeD3Table from './game-of-life-d3-table/GameOfLifeD3Table';
 
 import About from './about/About';
 import './index.css';
@@ -24,6 +25,7 @@ ReactDOM.render(
             <Route path="/calculator" component={Calculator}/>
             <Route path="/d3chart" component={D3Chart}/>
             <Route path="/game-of-life" component={GameOfLife}/>
+            <Route path="/game-of-life-d3-table" component={GameOfLifeD3Table}/>
         </Route>
     </Router>,
   document.getElementById('root')

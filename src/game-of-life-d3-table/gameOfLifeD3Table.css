@@ -1,0 +1,12 @@
+td {
+    width: 20px;
+    height: 20px;
+    border: solid 1pt black;
+}
+.alive {
+    background-color: green;
+}
+
+.dead {
+    background-color: red;
+}

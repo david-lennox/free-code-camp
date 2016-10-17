@@ -76,7 +76,6 @@ export default React.createClass({
                     (x-1) + '-' + (y),
                     (x-1) + '-' + (y+1),
                     (x-1) + '-' + (y-1)];
-
                 for(let i=0; i < 8; i++){
                         score += this.state[eightNeighbors[i]] || 0;
                 }

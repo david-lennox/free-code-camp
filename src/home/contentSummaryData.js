@@ -46,6 +46,12 @@ export default
         link:'/game-of-life',
         title: 'Game Of Life',
         description: 'A game of life...',
-        completion: 60
+        completion: 95
+    },
+    {
+        link:'/game-of-life-d3-table',
+        title: 'Game Of Life using D3 and HTML Table Element',
+        description: 'A game of life...',
+        completion: 50
     }
 ]
