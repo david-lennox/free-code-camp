@@ -3,23 +3,26 @@ import * as d3 from 'd3';
 import './gameOfLifeD3Table.css';
 
 var cellArr = [];
-var alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
-var svg, width, height, g;
+// var alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
+// var svg, width, height, g;
+
+//var table, tbody, rows;
 
 export default React.createClass({
     getInitialState(){
 
         return {
-            runSimulation: false,
             speed: 1000,
             generation: 0,
             gameWidth: 50,
             gameHeight: 50,
-            intervalId: -1
+            intervalId: -1 // some positive integer when simulation is running.
         }
     },
     componentWillMount(){
-        // Create the data array if it doesn't yet exist.
+
+    },
+    componentDidMount(){
         if(cellArr.length < this.state.gameHeight) {
             for (var i = 0; i < this.state.gameHeight; i++) {
                 cellArr[i] = [];
@@ -28,118 +31,83 @@ export default React.createClass({
                 }
             }
         }
+        //table = d3.select("#d3GameOfLife");
+        //tbody = table.append("tbody");
+        //rows = tbody.selectAll("tr");
+        this.d3Update(cellArr);
     },
-    componentDidMount(){
-        let self = this;
-        svg = d3.select("svg");
-        width = +svg.attr("width");
-        height = +svg.attr("height");
-        g = svg.append("g").attr("transform", "translate(32," + (height / 2) + ")")
-    },
-
     d3Update(data) {
+        var container = d3.select('#d3GameOfLife');
+        var table = d3.select('#d3GameOfLife tbody')
+            .data([data]);
+        table.enter().append("table").attr("class", (d,i)=>{
+            debugger;
+            return "tr";
+        });
+        table.exit().remove();
+        // create the row selection
+        var tr = table.selectAll('tr')
+            .data(function(d) {
+                debugger;
+                return d
+            });
+        tr.exit().remove();
+        // append 'tr' on enter
+        tr.enter()
+            .append('tr');
+        // create the cell selection
+        var td = tr.selectAll('td')
+            .data(function(d) {
+                return d;
+            });
+        td.exit().remove();
+        // append on enter
+        td.enter()
+            .append('td');
 
-        var t = d3.transition()
-            .duration(750);
-
-        // JOIN new data with old elements.
-        var text = g.selectAll("text")
-            .data(data, function(d) { return d; });
-
-        // EXIT old elements not present in new data.
-        text.exit()
-            .attr("class", "exit")
-            .transition(t)
-            .attr("y", 60)
-            .style("fill-opacity", 1e-6)
-            .remove();
-
-        // UPDATE old elements present in new data.
-        text.attr("class", "update")
-            .attr("y", 0)
-            .style("fill-opacity", 1)
-            .transition(t)
-            .attr("x", function(d, i) { return i * 32; });
-
-        // ENTER new elements present in new data.
-        text.enter().append("text")
-            .attr("class", "enter")
-            .attr("dy", ".35em")
-            .attr("y", -60)
-            .attr("x", function(d, i) { return i * 32; })
-            .style("fill-opacity", 1e-6)
-            .text(function(d) { return d; })
-            .transition(t)
-            .attr("y", 0)
-            .style("fill-opacity", 1);
-
-// The initial display.
-
-
-
-
-
-        //var rows, cells;
-        //// on enter
-        //rows = d3.select("#d3GameOfLife tbody").selectAll("tr").data(cellArr).enter().append('tr');
-        //cells = rows.selectAll("td")
-        //    .data(function(d) { return d; }); //JOIN.
-        //
-        //cells.exit().remove();
-        //
-        //cells.enter().append('td');
-        //
-        //// On enter and update
-        //cells.attr("class", (d) => d > 0  ? "alive" : "dead").text((d) => d);
+        // update cell text on update
+        td.text(function(d) {
+            return d;
+        });
     },
+
+
+
+
+
     render(){
         return (
             <div className="app">
                 <h1 className="h1">The D3 Component Rendered Below</h1>
-                <svg width="960" height="500" />
                 <button onClick={() => this.startSimulation()}>Start / Stop</button>
-                <button onClick={() => this.setState({speed: this.state.speed >99 ? this.state.speed - 50 : this.state.speed}, this.startSimulation())}>Faster</button>
+                <button onClick={() => this.setState({
+                        speed: this.state.speed >99 ?
+                        this.state.speed - 50 :
+                        this.state.speed
+                }, this.startSimulation())}>Faster</button>
                 <button onClick={() => this.setState({speed: this.state.speed + 50}, this.startSimulation())}>Slower</button>
-                <table id="d3GameOfLife">
-                    <tbody />
-                </table>
+                <div id="d3GameOfLife"/>
             </div>
         )
     },
     startSimulation() {
         let self = this;
-
         if(this.state.intervalId === -1) {
             let intervalId = setInterval(function() {
-                self.d3Update(d3.shuffle(alphabet)
-                    .slice(0, Math.floor(Math.random() * 26))
-                    .sort());
-            }, 500);
-            self.setState({intervalId: intervalId});
+                self.getNextArray();
+                self.d3Update(cellArr);
+            }, 1000);
+            self.setState({intervalId: intervalId}, () => console.log("Interval ID: " + intervalId));
         }
-
         else {
+            console.log("Clearing Interval");
             clearInterval(this.state.intervalId);
-            self.setState({intervalId: -1})
+            self.setState({intervalId: -1}, () => console.log("Interval ID: " + this.state.intervalId))
         }
-
-        // Grab a random sample of letters from the alphabet, in alphabetical order.
-
-
-
-        //if(this.state.runSimulation) clearInterval(this.state.intervalId);
-        //this.setState({runSimulation: true}, () => {
-        //    var intervalId = setInterval(() => this.getNextArray(), this.state.speed);
-        //    this.setState({intervalId: intervalId});
-        //});
     },
     getNextArray(){
+        console.log("starting getNextArray");
         var startTrans = Date.now();
-        var self = this;
-        if(!self.state.runSimulation) {
-            clearInterval(this.state.intervalId);
-            return;
-        }
         var nextArray = [];
         for (var i = 0; i < cellArr.length; i++){
             nextArray[i] = [];
@@ -177,7 +145,6 @@ export default React.createClass({
         }
         cellArr = nextArray;
         console.log("Array Creation in " + (Date.now() - startTrans));
-        this.d3update();
     }
 });
 
