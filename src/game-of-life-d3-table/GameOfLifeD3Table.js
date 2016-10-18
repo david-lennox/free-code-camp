@@ -7,7 +7,7 @@ var table;
 export default React.createClass({
     getInitialState(){
         return {
-            speed: 1000,
+            speed: 300,
             generation: 0,
             gameWidth: 50,
             gameHeight: 50,
@@ -16,7 +16,7 @@ export default React.createClass({
         }
     },
     componentDidMount(){
-        this.newTable();
+        this.newTable(this.buildRandomArray());
     },
 
     buildRandomArray(){
@@ -30,15 +30,16 @@ export default React.createClass({
         return cellArr;
     },
 
-    newTable(){
+    newTable(matrix){
+        this.setState({continue: false});
         var self = this;
         d3.select("#d3GameOfLife table").remove();
-        this.setState({cellArr: this.buildRandomArray(), generation: 0}, build);
+        table = d3.select("#d3GameOfLife").append("table");
+        this.setState({cellArr: matrix, generation: 0}, build);
         function build() {
-            table = d3.select("#d3GameOfLife").append("table");
-            self.d3Update(self.state.cellArr);  // BUG: Why do I need to call it three times?
-            self.d3Update(self.state.cellArr);
-            self.d3Update(self.state.cellArr);
+            self.d3Update(matrix);  // BUG: Why do I need to call it three times?
+            self.d3Update(matrix);
+            self.d3Update(matrix);
         }
     },
 
@@ -50,17 +51,26 @@ export default React.createClass({
 
         tr.enter().append("tr");
 
-        var td = tr.selectAll("td")
-            .data(function (d) {
-                return d;
+        tr.each(addCells);
+
+        function addCells(data, rowIndex) {
+            var td = d3.select(this).selectAll("td")
+                .data(function (d) {
+                    return d;
+                });
+            td.exit().remove();
+
+            td.enter().append("td");
+
+            td.attr("class", function (d) {
+                return d === 0 ? "dead" : "alive";
             });
-        td.exit().remove();
 
-        td.enter().append("td");
-
-        td.attr("class", function (d) {
-            return d === 0 ? "dead" : "alive";
-        });
+            td.on("click", function(d,i){
+                matrix[rowIndex][i] = d === 1 ? 0 : 1;
+                self.newTable(matrix);
+            });
+        }
 
         setTimeout(function() {
             if(!self.state.continue) {
@@ -90,17 +100,17 @@ export default React.createClass({
                 <button className="button" onClick={() => {this.setState({
                     gameWidth: 40,
                     gameHeight: 30,
-                    continue: false}, this.newTable)
+                    continue: false}, () => this.newTable(this.buildRandomArray()))
                     }}>40 x 30</button>
                 <button className="button" onClick={() => {this.setState({
                     gameWidth: 50,
                     gameHeight: 50,
-                    continue: false}, this.newTable)
+                    continue: false}, () => this.newTable(this.buildRandomArray()))
                     }}>50 x 50</button>
                 <button className="button" onClick={() => {this.setState({
                     gameWidth: 100,
                     gameHeight: 80,
-                    continue: false}, this.newTable)
+                    continue: false}, () => this.newTable(this.buildRandomArray()))
                     }}>100 x 80</button>
                 <div id="d3GameOfLife">
                 </div>
