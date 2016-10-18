@@ -5,7 +5,7 @@ var lastTick;
 export default React.createClass({
     getInitialState(){
         return {
-            ...this.getNewCellObj(50, 50),
+            cellObj: this.getNewCellObj(50, 50),
             runSimulation: false,
             speed: 200,
             generation: 0,
@@ -22,19 +22,21 @@ export default React.createClass({
         return cellObj;
     },
     handleClick(key){
-        this.setState({[key]: this.state[key] === 1 ? 0 : 1})
+        let newValue = this.state.cellObj[key] === 1 ? 0 : 1;
+        let newCellObj = Object.assign({}, this.state.cellObj, {[key]: newValue});
+        this.setState({cellObj: newCellObj});
     },
     render(){
         let {speed, generation} = this.state;
         var cellHeight = 10;
         var cellWidth = 10;
         let cellDivs = [];
-        for(var key in this.state){
-            if(this.state.hasOwnProperty(key) && key.match(/^[0-9]{1,3}-[0-9]{1,2}$/)){
+        for(var key in this.state.cellObj){
+            if(this.state.cellObj.hasOwnProperty(key) && key.match(/^[0-9]{1,3}-[0-9]{1,2}$/)){
                 let x, y;
                 [x, y] = key.split('-');
                 let cellStyle={
-                    backgroundColor: this.state[key] === 1 ? 'green' : 'red',
+                    backgroundColor: this.state.cellObj[key] === 1 ? 'green' : 'red',
                     border: 'solid 1px black',
                     position: 'absolute',
                     top: Number(x) * cellHeight,
@@ -59,16 +61,33 @@ export default React.createClass({
                     <button onClick={() => this.setState({runSimulation: false})}>Stop</button>
                     <button onClick={() => this.setState({speed: speed >99 ? speed - 50 : this.state.speed})}>Faster</button>
                     <button onClick={() => this.setState({speed: speed + 50})}>Slower</button>
-                    <button onClick={() => this.setState({
-                        runSimulation: false,
-                        gameHeight: 70,
-                        gameWidth: 100,
-                        ...this.getNewCellObj(70, 100)})}>100 x 70</button>
-                    <button onClick={() => this.setState({
-                        runSimulation: false,
-                        gameHeight: 30,
-                        gameWidth: 40,
-                        ...this.getNewCellObj(30, 40)})}>40 x 30</button>
+                    <button onClick={() => {
+                        this.removeStateCellProps();
+                        this.setState({
+                            runSimulation: false,
+                            generation: 0,
+                            gameHeight: 30,
+                            gameWidth: 40,
+                            cellObj: this.getNewCellObj(30, 40)})}
+                    }>40 x 30</button>
+                    <button onClick={() => {
+                        this.removeStateCellProps();
+                        this.setState({
+                            runSimulation: false,
+                            generation: 0,
+                            gameHeight: 50,
+                            gameWidth: 50,
+                            cellObj: this.getNewCellObj(50, 50)})}
+                    }>50 x 50</button>
+                    <button onClick={() => {
+                        this.removeStateCellProps();
+                        this.setState({
+                            runSimulation: false,
+                            generation: 0,
+                            gameHeight: 70,
+                            gameWidth: 100,
+                            cellObj: this.getNewCellObj(70, 100)})}
+                    }>70 x 100</button>
                 </div>
                 <div className="gameBoard" style={gameBoardStyle}>
                     {cellDivs}
@@ -84,9 +103,9 @@ export default React.createClass({
         lastTick = Date.now();
         var self = this;
         if(!self.state.runSimulation) return;
-        var stateChanges = {};
-        for(var key in this.state){
-            if(this.state.hasOwnProperty(key) && key.match(/^[0-9]{1,3}-[0-9]{1,2}$/)){
+        var newCellObj = {};
+        for(var key in this.state.cellObj){
+            if(this.state.cellObj.hasOwnProperty(key) && key.match(/^[0-9]{1,3}-[0-9]{1,2}$/)){
                 let x, y;
                 [x, y] = key.split('-');
                 x=Number(x);
@@ -102,14 +121,22 @@ export default React.createClass({
                     (x-1) + '-' + (y+1),
                     (x-1) + '-' + (y-1)];
                 for(let i=0; i < 8; i++){
-                    score += this.state[eightNeighbors[i]] || 0;
+                    score += this.state.cellObj[eightNeighbors[i]] || 0;
                 }
-                if (score > 3 && this.state[key] === 1) stateChanges[key] = 0;
-                else if(score === 3 && this.state[key] === 0) stateChanges[key] = 1;
-                else if(score <2 && this.state[key] === 1) stateChanges[key] = 0;
+                if (score > 3) newCellObj[key] = 0;
+                else if(score === 3) newCellObj[key] = 1;
+                else if(score <2) newCellObj[key] = 0;
+                else if(score === 2) newCellObj[key] = this.state.cellObj[key];
             }
         }
-        self.setState(stateChanges, () => {
+        self.setState({cellObj: newCellObj}, () => {
             setTimeout(() => self.getNextArray(), self.state.speed)});
+    },
+    removeStateCellProps(){
+        for(var key in this.state) {
+            if (this.state.hasOwnProperty(key) && key.match(/^[0-9]{1,3}-[0-9]{1,2}$/)) {
+
+            }
+        }
     }
 });
