@@ -2,112 +2,116 @@ import React from 'react';
 import * as d3 from 'd3';
 import './gameOfLifeD3Table.css';
 
-var cellArr = [];
-// var alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
-// var svg, width, height, g;
-
-//var table, tbody, rows;
-
+var lastTick = Date.now();
+var table;
 export default React.createClass({
     getInitialState(){
-
         return {
             speed: 1000,
             generation: 0,
             gameWidth: 50,
             gameHeight: 50,
-            intervalId: -1 // some positive integer when simulation is running.
+            continue: false,
+            cellArr: []
         }
     },
-    componentWillMount(){
-
-    },
-    componentDidMount(){
-        if(cellArr.length < this.state.gameHeight) {
-            for (var i = 0; i < this.state.gameHeight; i++) {
-                cellArr[i] = [];
-                for (var j = 0; j < this.state.gameWidth; j++) {
-                    cellArr[i][j] = Math.random() > 0.8 ? 1 : 0;
-                }
+    buildRandomArray(){
+        let cellArr = [];
+        for (var i = 0; i < this.state.gameHeight; i++) {
+            cellArr[i] = [];
+            for (var j = 0; j < this.state.gameWidth; j++) {
+                cellArr[i][j] = Math.random() > 0.8 ? 1 : 0;
             }
         }
-        //table = d3.select("#d3GameOfLife");
-        //tbody = table.append("tbody");
-        //rows = tbody.selectAll("tr");
-        this.d3Update(cellArr);
+        return cellArr;
     },
-    d3Update(data) {
-        var container = d3.select('#d3GameOfLife');
-        var table = d3.select('#d3GameOfLife tbody')
-            .data([data]);
-        table.enter().append("table").attr("class", (d,i)=>{
-            debugger;
-            return "tr";
-        });
-        table.exit().remove();
-        // create the row selection
-        var tr = table.selectAll('tr')
-            .data(function(d) {
-                debugger;
-                return d
-            });
+    buildTable() {
+        var self = this;
+        d3.select("d3GameOfLife table").remove();
+        table = d3.select("#d3GameOfLife")
+            .append("table");
+        self.d3Update(self.state.cellArr);  // BUG: Why do I need to call it three times?
+        self.d3Update(self.state.cellArr);
+        self.d3Update(self.state.cellArr);
+    },
+    componentDidMount(){
+        var self = this;
+        this.setState({cellArr: this.buildRandomArray()}, this.buildTable);
+    },
+
+    d3Update(matrix) {
+        var self = this;
+        var tr = table.selectAll("tr").data(matrix);
+
         tr.exit().remove();
-        // append 'tr' on enter
-        tr.enter()
-            .append('tr');
-        // create the cell selection
-        var td = tr.selectAll('td')
-            .data(function(d) {
+
+        tr.enter().append("tr");
+
+        var td = tr.selectAll("td")
+            .data(function (d) {
                 return d;
             });
         td.exit().remove();
-        // append on enter
-        td.enter()
-            .append('td');
 
-        // update cell text on update
-        td.text(function(d) {
-            return d;
+        td.enter().append("td")
+            .merge()
+            .attr("class", function (d) {
+            return d ===1 ? "alive" : "dead";
         });
+
+        setTimeout(function() {
+            if(!self.state.continue) {
+                self.setState({cellArr: matrix});
+                return;
+            }
+            else {
+                console.log(Date.now() - lastTick);
+                lastTick = Date.now();
+                self.d3Update(self.getNextArray(matrix));
+            }
+        }, self.state.speed);
     },
-
-
-
-
-
     render(){
         return (
             <div className="app">
                 <h1 className="h1">The D3 Component Rendered Below</h1>
-                <button onClick={() => this.startSimulation()}>Start / Stop</button>
+                <button onClick={() => this.start()}>Start</button>
+                <button onClick={() => this.setState({continue: false})}>Stop</button>
                 <button onClick={() => this.setState({
-                        speed: this.state.speed >99 ?
-                        this.state.speed - 50 :
-                        this.state.speed
-                }, this.startSimulation())}>Faster</button>
-                <button onClick={() => this.setState({speed: this.state.speed + 50}, this.startSimulation())}>Slower</button>
-                <div id="d3GameOfLife"/>
+                    speed: this.state.speed >99 ?
+                    this.state.speed - 50 :
+                    this.state.speed
+                })}>Faster</button>
+                <button onClick={() => this.setState({
+                    speed: this.state.speed + 50})}>Slower</button>
+                <button onClick={() => {this.setState({
+                    gameWidth: 50,
+                    gameHeight: 30,
+                    continue: false,
+                    cellArr: this.buildRandomArray()}, () => this.start)
+                    }}>Small Board</button>
+                <button onClick={() => {this.setState({
+                    gameWidth: 100,
+                    gameHeight: 80,
+                    continue: false,
+                    cellArr: this.buildRandomArray()}, this.start)
+                    }}>Large Board</button>
+                <div id="d3GameOfLife">
+                </div>
             </div>
         )
     },
-    startSimulation() {
-        let self = this;
-        if(this.state.intervalId === -1) {
-            let intervalId = setInterval(function() {
-                self.getNextArray();
-                self.d3Update(cellArr);
-            }, 1000);
-            self.setState({intervalId: intervalId}, () => console.log("Interval ID: " + intervalId));
+    start() {
+        if(this.state.continue) {
+            console.log("Must only run one at a time.");
         }
         else {
-            console.log("Clearing Interval");
-            clearInterval(this.state.intervalId);
-            self.setState({intervalId: -1}, () => console.log("Interval ID: " + this.state.intervalId))
+            this.setState({continue: true},
+                () => this.d3Update(this.state.cellArr));
         }
     },
-    getNextArray(){
-        console.log("starting getNextArray");
-        var startTrans = Date.now();
+    getNextArray(cellArr){
+        this.setState({generation: this.state.generation + 1});
         var nextArray = [];
         for (var i = 0; i < cellArr.length; i++){
             nextArray[i] = [];
@@ -143,8 +147,7 @@ export default React.createClass({
                 else nextArray[i][j] = cellArr[i][j]; // Line not required because they are copied up top.
             }
         }
-        cellArr = nextArray;
-        console.log("Array Creation in " + (Date.now() - startTrans));
+        return nextArray;
     }
 });
 
