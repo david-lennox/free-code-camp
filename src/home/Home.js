@@ -22,7 +22,8 @@ class Home extends Component {
 
       let tocRows = tocData.map(c => <TOCRow key={c.title} item={c}/>);
         return (
-          <div className="Home">
+          <div>
+              <h1>Contents</h1>
             <table className="table">
                 <tbody>
                 {tocRows}

@@ -15,6 +15,10 @@ export default React.createClass({
             cellArr: []
         }
     },
+    componentDidMount(){
+        this.newTable();
+    },
+
     buildRandomArray(){
         let cellArr = [];
         for (var i = 0; i < this.state.gameHeight; i++) {
@@ -25,18 +29,17 @@ export default React.createClass({
         }
         return cellArr;
     },
-    buildTable() {
+
+    newTable(){
         var self = this;
-        d3.select("d3GameOfLife table").remove();
-        table = d3.select("#d3GameOfLife")
-            .append("table");
-        self.d3Update(self.state.cellArr);  // BUG: Why do I need to call it three times?
-        self.d3Update(self.state.cellArr);
-        self.d3Update(self.state.cellArr);
-    },
-    componentDidMount(){
-        var self = this;
-        this.setState({cellArr: this.buildRandomArray()}, this.buildTable);
+        d3.select("#d3GameOfLife table").remove();
+        this.setState({cellArr: this.buildRandomArray(), generation: 0}, build);
+        function build() {
+            table = d3.select("#d3GameOfLife").append("table");
+            self.d3Update(self.state.cellArr);  // BUG: Why do I need to call it three times?
+            self.d3Update(self.state.cellArr);
+            self.d3Update(self.state.cellArr);
+        }
     },
 
     d3Update(matrix) {
@@ -53,16 +56,15 @@ export default React.createClass({
             });
         td.exit().remove();
 
-        td.enter().append("td")
-            .merge()
-            .attr("class", function (d) {
-            return d ===1 ? "alive" : "dead";
+        td.enter().append("td");
+
+        td.attr("class", function (d) {
+            return d === 0 ? "dead" : "alive";
         });
 
         setTimeout(function() {
             if(!self.state.continue) {
                 self.setState({cellArr: matrix});
-                return;
             }
             else {
                 console.log(Date.now() - lastTick);
@@ -73,29 +75,33 @@ export default React.createClass({
     },
     render(){
         return (
-            <div className="app">
-                <h1 className="h1">The D3 Component Rendered Below</h1>
-                <button onClick={() => this.start()}>Start</button>
-                <button onClick={() => this.setState({continue: false})}>Stop</button>
-                <button onClick={() => this.setState({
+            <div>
+                <h1 className="h1">Game Of Life: A D3 Implementation</h1>
+                <h3>Generation: {this.state.generation}, Speed: {this.state.speed}</h3>
+                <button className="button" onClick={() => this.start()}>Start</button>
+                <button className="button" onClick={() => this.setState({continue: false})}>Stop</button>
+                <button className="button" onClick={() => this.setState({
                     speed: this.state.speed >99 ?
                     this.state.speed - 50 :
                     this.state.speed
                 })}>Faster</button>
-                <button onClick={() => this.setState({
+                <button className="button" onClick={() => this.setState({
                     speed: this.state.speed + 50})}>Slower</button>
-                <button onClick={() => {this.setState({
-                    gameWidth: 50,
+                <button className="button" onClick={() => {this.setState({
+                    gameWidth: 40,
                     gameHeight: 30,
-                    continue: false,
-                    cellArr: this.buildRandomArray()}, () => this.start)
-                    }}>Small Board</button>
-                <button onClick={() => {this.setState({
+                    continue: false}, this.newTable)
+                    }}>40 x 30</button>
+                <button className="button" onClick={() => {this.setState({
+                    gameWidth: 50,
+                    gameHeight: 50,
+                    continue: false}, this.newTable)
+                    }}>50 x 50</button>
+                <button className="button" onClick={() => {this.setState({
                     gameWidth: 100,
                     gameHeight: 80,
-                    continue: false,
-                    cellArr: this.buildRandomArray()}, this.start)
-                    }}>Large Board</button>
+                    continue: false}, this.newTable)
+                    }}>100 x 80</button>
                 <div id="d3GameOfLife">
                 </div>
             </div>
