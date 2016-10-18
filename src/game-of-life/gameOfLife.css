@@ -1,0 +1,11 @@
+.gol {
+    position: relative;
+    height: 100%;
+    overflow: auto;
+}
+
+.gameBoard {
+    position: relative;
+    height: 100%;
+    overflow: auto;
+}
