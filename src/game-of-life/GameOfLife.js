@@ -47,15 +47,13 @@ export default React.createClass({
                 cellDivs.push(<div key={key} id={key} style={cellStyle} onClick={() => this.handleClick(x + '-' + y)}></div>)
             }
         }
-
         let gameBoardStyle = {
             width: (cellWidth + 2) * this.state.gameWidth,
             height: (cellHeight + 2) * this.state.gameHeight
         };
-
         return (
-            <div className = "gol">
-                <h3>Speed: {this.state.speed}, Generation: {this.state.generation}</h3>
+            <div className="gol">
+                <h3>Speed: {speed}, Generation: {generation}</h3>
                 <div className="nav">
                     <button onClick={this.startSimulation}>Run</button>
                     <button onClick={() => this.setState({runSimulation: false})}>Stop</button>

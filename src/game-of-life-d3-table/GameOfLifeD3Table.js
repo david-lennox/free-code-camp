@@ -18,7 +18,6 @@ export default React.createClass({
     componentDidMount(){
         this.newTable(this.buildRandomArray());
     },
-
     buildRandomArray(){
         let cellArr = [];
         for (var i = 0; i < this.state.gameHeight; i++) {
@@ -29,7 +28,6 @@ export default React.createClass({
         }
         return cellArr;
     },
-
     newTable(matrix){
         this.setState({continue: false});
         var self = this;
@@ -42,36 +40,27 @@ export default React.createClass({
             self.d3Update(matrix);
         }
     },
-
     d3Update(matrix) {
         var self = this;
         var tr = table.selectAll("tr").data(matrix);
-
         tr.exit().remove();
-
         tr.enter().append("tr");
-
         tr.each(addCells);
-
         function addCells(data, rowIndex) {
             var td = d3.select(this).selectAll("td")
                 .data(function (d) {
                     return d;
                 });
             td.exit().remove();
-
             td.enter().append("td");
-
             td.attr("class", function (d) {
                 return d === 0 ? "dead" : "alive";
             });
-
             td.on("click", function(d,i){
                 matrix[rowIndex][i] = d === 1 ? 0 : 1;
                 self.newTable(matrix);
             });
         }
-
         setTimeout(function() {
             if(!self.state.continue) {
                 self.setState({cellArr: matrix});

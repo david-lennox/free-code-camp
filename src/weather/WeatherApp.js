@@ -4,13 +4,6 @@ import '../../node_modules/weather-icons/css/weather-icons.min.css';
 
 var apiId = "4b5b363b9217c53df50903d81473758e";
 
-// this.key is not used.
-var City = React.createClass({
-    render: function(){
-        return <li className="city">{this.props.name}</li>
-    }
-});
-
 export default React.createClass({
     changeTempScale: function(){
         this.setState({scale: this.state.scale === "celcius" ? "farenheight" : "celcius"})
@@ -25,11 +18,11 @@ export default React.createClass({
             {q: this.state.city, appid: apiId},
             success: function(result){
                 console.log(JSON.stringify(result));
-                var precip = result.rain ? result.rain['1h'] : 0;
+                var precip = result.rain ? result.rain[Object.keys(result.rain)[0]] + "mm in " + Object.keys(result.rain)[0]: 0;
                 this.setState({
                     tempC: result.main.temp -273.15,
                     tempF: result.main.temp * 9/5 - 459.67,
-                    rain: result.rain ? result.rain[Object.keys(result.rain)[0]] + "mm in " + Object.keys(result.rain)[0]: 0,
+                    rain: precip,
                     lat: result.coord.lat,
                     lon: result.coord.lon,
                     weatherIcon: result.main.temp > 295 ? 'wi wi-day-sunny' : 'wi wi-day-cloudy',

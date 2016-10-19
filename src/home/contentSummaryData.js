@@ -44,14 +44,14 @@ export default
     },
     {
         link:'/game-of-life',
-        title: 'Game Of Life',
-        description: 'A game of life...',
-        completion: 95
+        title: 'Game Of Life using React',
+        description: 'A React component that tracks the game state as a state property, which is an object containing a property for each cell. A version that used a 2d array for the game state was a little slower. Most time consuming thing appears to be rendering the divs to the page.',
+        completion: 100
     },
     {
         link:'/game-of-life-d3-table',
         title: 'Game Of Life using D3 and HTML Table Element',
-        description: 'A game of life...',
-        completion: 50
+        description: 'This version is about 4 x faster than the React Only version for the largest game board.',
+        completion: 100
     }
 ]
