@@ -1,6 +1,34 @@
 import React from 'react';
 import './gameOfLife.css';
 
+const cellHeight = 10;
+const cellWidth = 10;
+
+let Cell = React.createClass({
+    render(){
+        const {xy, value, handleClick} = this.props;
+        let x, y;
+        [x, y] = xy.split('-');
+        let cellStyle={
+            backgroundColor: value === 1 ? 'green' : 'red',
+            border: 'solid 1px black',
+            position: 'absolute',
+            top: Number(x) * cellHeight,
+            left: Number(y) * cellWidth,
+            width: cellWidth,
+            height: cellHeight
+        };
+
+        return <div id={xy} style={cellStyle} onClick={handleClick}></div>
+
+    },
+    shouldComponentUpdate(nextProps){
+        return nextProps.value !== this.props.value;
+    }
+
+
+});
+
 var lastTick;
 export default React.createClass({
     getInitialState(){
@@ -28,23 +56,11 @@ export default React.createClass({
     },
     render(){
         let {speed, generation} = this.state;
-        var cellHeight = 10;
-        var cellWidth = 10;
+
         let cellDivs = [];
         for(var key in this.state.cellObj){
             if(this.state.cellObj.hasOwnProperty(key) && key.match(/^[0-9]{1,3}-[0-9]{1,2}$/)){
-                let x, y;
-                [x, y] = key.split('-');
-                let cellStyle={
-                    backgroundColor: this.state.cellObj[key] === 1 ? 'green' : 'red',
-                    border: 'solid 1px black',
-                    position: 'absolute',
-                    top: Number(x) * cellHeight,
-                    left: Number(y) * cellWidth,
-                    width: cellWidth,
-                    height: cellHeight
-                };
-                cellDivs.push(<div key={key} id={key} style={cellStyle} onClick={() => this.handleClick(x + '-' + y)}></div>)
+                cellDivs.push(<Cell key={key} xy={key} value={this.state.cellObj[key]} handleClick={this.handleClick.bind(null, key)}></Cell>)
             }
         }
         let gameBoardStyle = {
