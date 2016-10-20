@@ -10,10 +10,11 @@ import React from 'react';
  */
 
 var settings = {
-    worldWidth: 100,
-    worldHeight: 100,
-    maxRoomSize: 40,
-    minRoomSize: 10, // cells
+    worldWidth: 100,  // cells
+    worldHeight: 100, // cells
+    maxRoomSize: 45, // cells
+    minRoomSize: 15, // cells
+    maxCorridorLength: 20, // cells
     roomGenerationAttempts: 10000,
     randomWalkAttempts: 1000,
     cellSize: 10 // pixels
@@ -106,8 +107,8 @@ export default React.createClass({
         entityNames.forEach(eName => {
             let vacant = false;
             while (vacant === false) {
-                let x = Math.round(Math.random() * this.state.world.length);
-                let y = Math.round(Math.random() * this.state.world.length);
+                let x = Math.round(Math.random() * (this.state.world.length - 1));
+                let y = Math.round(Math.random() * (this.state.world[0].length - 1));
                 if (this.state.world[x][y] === 1
                     && !this.state.entityNamesByLoc[x + '-' + y]
                     && !allocated[x + '-' + y]) {
@@ -118,7 +119,6 @@ export default React.createClass({
             }
         });
         this.setState({entityNamesByLoc: Object.assign(this.state.entityNamesByLoc, allocated)});
-
     },
     fight(enemy){
         var enemyCopy = Object.assign({}, enemy);
@@ -243,7 +243,7 @@ function getNewWorld(){
         }
     }
     for(let i = 0; i < settings.roomGenerationAttempts; i++) {
-        placeRandomRect();
+        makeRoom();
     }
 
     for(let roomCoords in rooms){
@@ -261,7 +261,7 @@ function getNewWorld(){
 
     return newWorld;
 
-    function placeRandomRect(){
+    function makeRoom(){
         let worldLength = newWorld.length -1;
         let worldHeight = newWorld[0].length - 1;
 
@@ -279,7 +279,7 @@ function getNewWorld(){
         }
         // shrink the rectangle
         let room = {x: rect.x + 1, y: rect.y + 1, width: rect.width - 3, height: rect.height - 3};
-        rooms[x + '-' + y] = room;
+        rooms[room.x + '-' + room.y] = room;
         for(let x = room.x; x < room.x + room.width; x++){
             for(let y = room.y; y < room.y + room.height; y++){
                 newWorld[x][y] = 1;
@@ -288,30 +288,81 @@ function getNewWorld(){
     }
 
     function makeCorridor(room){
+        const roomKeys = Object.keys(rooms);
         const {x, y, width, height} = room;
-        const direction = ['n', 's', 'e', 'w'][Math.round(Math.random() * 4 - 0.5)]
-        let startingPoint = {};
-        let transformation;
+        const direction = ['n', 's', 'e', 'w'][Math.round(Math.random() * 4 - 0.5)];
+        console.log(direction);
+        let startingPt = {};
+        let moveToNext;
         switch(direction){
             case 'n':
-                startingPoint = {x: x + Math.round(Math.random() * width), y: y};
-                transformation = (point) => Object.assign(point, {y: point.y - 1});
+                startingPt = {x: x + 2 + Math.round(Math.random() * (width - 4)), y: y};
+                moveToNext = (point) => Object.assign(point, {y: point.y - 1});
                 break;
             case 's':
-                startingPoint = {x: x + Math.round(Math.random() * width), y: y + height};
-                transformation = (point) => Object.assign(point, {y: point.y + 1});
+                startingPt = {x: x + 2 + Math.round(Math.random() * (width - 4)), y: y + height - 1};
+                moveToNext = (point) => Object.assign(point, {y: point.y + 1});
                 break;
             case 'e':
-                startingPoint = {x: x + width, y: y + Math.round(Math.random() * height)};
-                transformation = (point) => Object.assign(point, {x: point.x + 1});
+                startingPt = {x: x + width - 1, y: y + Math.round(Math.random() * (height - 4))};
+                moveToNext = (point) => Object.assign(point, {x: point.x + 1});
                 break;
             case 'w':
-                startingPoint = {x: x, y: y + Math.round(Math.random() * height)};
-                transformation = (point) => Object.assign(point, {x: point.x - 1});
+                startingPt = {x: x, y: y + Math.round(Math.random() * (height - 4))};
+                moveToNext = (point) => Object.assign(point, {x: point.x - 1});
+                break;
+            default:
                 break;
         }
-    }
 
+
+
+        console.log("sp1 x: " + startingPt.x + ", sp1 y: " + startingPt.y);
+        let currentPt = Object.assign({}, startingPt);
+        for(let i = 0; i < settings.maxCorridorLength; i ++){
+            moveToNext(currentPt);
+            // eslint-disable-next-line
+            var intersectingRoomKey = roomKeys.find(rmKey => {
+                let rm = rooms[rmKey];
+                return currentPt.x >= rm.x && currentPt.x <= rm.x + rm.width
+                    && currentPt.y >= rm.y && currentPt.y <= rm.y + rm.height
+                    && rmKey !== room.x + '-' + room.y;
+            });
+            if(intersectingRoomKey){
+                let intersectingRoom = rooms[intersectingRoomKey];
+                let keyStr1 = room.x + '-' + room.y + '-to-' + intersectingRoom.x + '-' + intersectingRoom.y;
+                let keyStr2 = intersectingRoom.x + '-' + intersectingRoom.y + '-to-' + room.x + '-' + room.y;
+                if(corridors[keyStr1]) {
+                    console.log("Already have a join between these two rooms: " + keyStr1);
+                    return;
+                } // there is already a corridor between these rooms.
+                else {
+                    corridors[keyStr1] = {startingPt: startingPt};
+                    corridors[keyStr2] = {startingPt: startingPt};
+                    //console.log("sp2 x: " + startingPt.x + ", sp2 y: " + startingPt.y);
+                    console.log(keyStr1);
+                    console.log(keyStr2);
+                    currentPt = startingPt;
+                    let keepDigging = true;
+                    while(keepDigging){
+                        console.log("Keep digging!");
+                        moveToNext(currentPt);
+                        if(currentPt.x >= newWorld.length || currentPt.y >= newWorld[0].length
+                            || currentPt.x < 0 || currentPt.y < 0) {
+                            //debugger;
+                            break;
+                        }
+                        if(newWorld[currentPt.x][currentPt.y] === 1) {
+                            keepDigging = false;
+                            break;
+                        }
+                        newWorld[currentPt.x][currentPt.y] = 1
+                    }
+                }
+                break;
+            }
+        }
+    }
 }
 
 
