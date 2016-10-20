@@ -53,5 +53,11 @@ export default
         title: 'Game Of Life using D3 and HTML Table Element',
         description: 'This version is about 4 x faster than the React Only version for the largest game board.',
         completion: 100
+    },
+    {
+        link: "/rogue-like-game",
+        title: 'Rogue Like Game with React',
+        description: 'A game where you move a little player around and attack enemies and collect things.',
+        completion: 50
     }
 ]
