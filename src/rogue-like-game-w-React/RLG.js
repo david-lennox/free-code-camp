@@ -9,6 +9,8 @@ import React from 'react';
 *   Move. On each move the player's coordinates change and the corresponding component is re-rendered. The World
  */
 
+var tick;
+
 var settings = {
     worldWidth: 100,  // cells
     worldHeight: 100, // cells
@@ -24,6 +26,7 @@ var Entity = React.createClass({
     render(){
         let e = this.props.entity;
         let eStyle = {
+            visibility: e.health > 0 ? 'visible' : 'hidden',
             width: settings.cellSize,
             height: settings.cellSize,
             position: 'absolute',
@@ -32,7 +35,7 @@ var Entity = React.createClass({
             backgroundColor: e.type === 'player' ? 'blue'
                 : e.type === 'enemy' ? 'red'
                 : e.type === 'health' ? 'green'
-                : e.type === 'weapon' ? 'orange' : 'purple' // portals are purple.
+                : e.type === 'weapon' ? 'orange' : 'purple', // portals are purple.
         };
         return <div id={e.name} style={eStyle}></div>;
     }
@@ -69,6 +72,7 @@ export default React.createClass({
         // Keep all game state in this container. All other components will be pure (only properties passed from here).
         return {
             world: getNewWorld(),
+            level: 1,
             player: {
                 x: 0,
                 y: 0,
@@ -79,11 +83,18 @@ export default React.createClass({
                 name: 'player'
             },
             entityNamesByLoc: {},
-            ...this.getEntities(1,4, 4, 2, 1) //getEntities(level, healthPacks, enemies, weapons, portals)
+            ...this.getEntities(1)
         }
     },
     componentWillMount(){
+        var self = this;
         this.setStartingPositions();
+        window.addEventListener("keydown", function (event) {
+            if (event.defaultPrevented) return; // Should do nothing if the key event was already consumed.
+            self.move(event.key);
+            // Consume the event to avoid it being handled twice
+            event.preventDefault();
+        }, true);
     },
     render(){
         let entityElements = Object.keys(this.state).map(e => {
@@ -102,7 +113,8 @@ export default React.createClass({
     },
     setStartingPositions(){
         let self = this;
-        let entityNames = Object.keys(this.state).filter(eName => typeof(this.state[eName].type) === 'string');
+        let entityNames = Object.keys(this.state).filter(eName =>
+            typeof(this.state[eName].type) === 'string');
         let allocated = {}; // Need this because setState runs async.
         entityNames.forEach(eName => {
             let vacant = false;
@@ -114,7 +126,7 @@ export default React.createClass({
                     && !allocated[x + '-' + y]) {
                     vacant = true;
                     self.setState({[eName]: Object.assign(this.state[eName], {x: x, y: y})});
-                    allocated[x + '-' + y] = eName;
+                    if(eName !== 'player') allocated[x + '-' + y] = eName;
                 }
             }
         });
@@ -137,18 +149,20 @@ export default React.createClass({
         });
     },
     move(arrowKey){
+        console.log("time from last tick: " + (Date.now() - tick));
+        tick = Date.now();
         let playerCopy = Object.assign({}, this.state.player);
         switch (arrowKey) {
-            case 'N':
+            case 'ArrowUp':
                 playerCopy.y += 1;
                 break;
-            case 'S':
+            case 'ArrowDown':
                 playerCopy.y -= 1;
                 break;
-            case 'E':
+            case 'ArrowRight':
                 playerCopy.x += 1;
                 break;
-            case 'W':
+            case 'ArrowLeft':
                 playerCopy.x -= 1;
                 break;
             default:
@@ -156,14 +170,15 @@ export default React.createClass({
         }
         
         if (this.state.world[playerCopy.x][playerCopy.y] === 1) {
-            let occupierName = this.entityNamesByLoc[playerCopy.x + '-' + playerCopy.y] || null;
+            let occupierName = this.state.entityNamesByLoc[playerCopy.x + '-' + playerCopy.y] || null;
             if (occupierName && this.state[occupierName].health > 0) {
                 let occupier = this.state[occupierName];
                 switch (occupier.type) {
                     case 'enemy':
                         this.fight(occupier); // fight method will move player if wins.
                         break;
-                    case 'health' || 'weapon':
+                    case 'health':
+                    case 'weapon':
                         this.collect(occupier); // will also move the player
                         break;
                     case 'portal':
@@ -178,14 +193,45 @@ export default React.createClass({
             }
         }
     },
+    collect(entity){
+        let playerCopy = Object.assign({}, this.state.player, {
+            health: this.state.player.health + (entity.type === 'health' ? entity.health : 0),
+            attack: this.state.player.attack + (entity.type === 'weapon' ? entity.attack : 0),
+            weapon: entity.type === 'weapon' ? entity.weapon : this.state.player.weapon,
+            x: entity.x,
+            y: entity.y
+        });
+        let entityCopy = Object.assign({}, entity, {
+            health: 0,
+            attack: 0
+        });
+        this.setState({player: playerCopy, [entity.name]: entityCopy})
+    },
     nextLevel(){
         this.setState({entityNamesByLoc: {}, world: []}, () => {
             this.setState({...this.getEntities(), world: getNewWorld() });  // Note the old entities remain.
         })
     },
-    getEntities(level, healthPacks, enemies, weapons, portals){
+    getEntities(level){
+        let healthpacks, enemies, weapons, portals;
+        switch(level){
+            case 1:
+                [healthpacks, enemies, weapons, portals] = [3, 3, 2, 1];
+                break;
+            case 2:
+                [healthpacks, enemies, weapons, portals] = [4, 5, 2, 1];
+                break;
+            case 3:
+                [healthpacks, enemies, weapons, portals] = [6, 9, 2, 2];
+                break;
+            case 4:
+                [healthpacks, enemies, weapons, portals] = [7, 15, 2, 2];
+                break;
+        }
+        var weaponList = [['knife', 5], ['sword', 8], ['bow', 12], ['pistol', 16], ['rifle', 20], ['assault rifle', 30],
+                ['bazooka', 40], ['grenade-launcher', 60]]; // 2 per level (4 levels)
         var newEntities = {};
-        for(let i = 0; i < healthPacks; i++){
+        for(let i = 0; i < healthpacks; i++){
             let name = 'health-' + i;
             newEntities[name] = {
                 name: name,
@@ -205,14 +251,15 @@ export default React.createClass({
                 level: level
             };
         }
-        for(let i = 0; i < weapons; i++){
+        for(let i = 0; i < 2; i++){ // Two weapons per level only - this is not a good design.
             let name = 'weapon-' + i;
             newEntities[name] = {
                 name: name,
-                attack: 20,
+                attack: weaponList[(level - 1)*2 + i][1],
                 health: 1,
                 type: 'weapon',
-                level: level
+                level: level,
+                weapon: weaponList[(level - 1)*2 + i][0]
             };
         }
         for(let i = 0; i < portals; i++){
@@ -226,7 +273,7 @@ export default React.createClass({
             };
         }
         return newEntities;
-    }
+    },
 });
 
 /*
@@ -291,7 +338,6 @@ function getNewWorld(){
         const roomKeys = Object.keys(rooms);
         const {x, y, width, height} = room;
         const direction = ['n', 's', 'e', 'w'][Math.round(Math.random() * 4 - 0.5)];
-        console.log(direction);
         let startingPt = {};
         let moveToNext;
         switch(direction){
@@ -314,10 +360,6 @@ function getNewWorld(){
             default:
                 break;
         }
-
-
-
-        console.log("sp1 x: " + startingPt.x + ", sp1 y: " + startingPt.y);
         let currentPt = Object.assign({}, startingPt);
         for(let i = 0; i < settings.maxCorridorLength; i ++){
             moveToNext(currentPt);
@@ -333,19 +375,14 @@ function getNewWorld(){
                 let keyStr1 = room.x + '-' + room.y + '-to-' + intersectingRoom.x + '-' + intersectingRoom.y;
                 let keyStr2 = intersectingRoom.x + '-' + intersectingRoom.y + '-to-' + room.x + '-' + room.y;
                 if(corridors[keyStr1]) {
-                    console.log("Already have a join between these two rooms: " + keyStr1);
                     return;
                 } // there is already a corridor between these rooms.
                 else {
                     corridors[keyStr1] = {startingPt: startingPt};
                     corridors[keyStr2] = {startingPt: startingPt};
-                    //console.log("sp2 x: " + startingPt.x + ", sp2 y: " + startingPt.y);
-                    console.log(keyStr1);
-                    console.log(keyStr2);
                     currentPt = startingPt;
                     let keepDigging = true;
                     while(keepDigging){
-                        console.log("Keep digging!");
                         moveToNext(currentPt);
                         if(currentPt.x >= newWorld.length || currentPt.y >= newWorld[0].length
                             || currentPt.x < 0 || currentPt.y < 0) {
