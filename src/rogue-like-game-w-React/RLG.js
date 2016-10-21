@@ -14,8 +14,8 @@ var tick;
 var settings = {
     worldWidth: 100,  // cells
     worldHeight: 100, // cells
-    maxRoomSize: 45, // cells
-    minRoomSize: 15, // cells
+    maxRoomSize: 40, // cells
+    minRoomSize: 20, // cells
     maxCorridorLength: 20, // cells
     roomGenerationAttempts: 10000,
     randomWalkAttempts: 1000,
@@ -42,6 +42,7 @@ var Entity = React.createClass({
 });
 
 var World = React.createClass({
+    shouldComponentUpdate(nextProps){return this.props.level !== nextProps.level },
     render(){
         let {cellArray, offset} = this.props;
         let cells = [];
@@ -103,7 +104,7 @@ export default React.createClass({
         });
         return (
             <div className="game">
-                <World cellArray={this.state.world} offset={this.getOffset()}/>
+                <World level={this.state.level} cellArray={this.state.world} offset={this.getOffset()}/>
                 {entityElements}
             </div>
         )
@@ -114,7 +115,7 @@ export default React.createClass({
     setStartingPositions(){
         let self = this;
         let entityNames = Object.keys(this.state).filter(eName =>
-            typeof(this.state[eName].type) === 'string');
+            typeof(this.state[eName].type) === 'string' && this.state[eName].health > 0);
         let allocated = {}; // Need this because setState runs async.
         entityNames.forEach(eName => {
             let vacant = false;
@@ -149,15 +150,15 @@ export default React.createClass({
         });
     },
     move(arrowKey){
-        console.log("time from last tick: " + (Date.now() - tick));
+        console.log("Enter move function. Time from last tick: " + (Date.now() - tick));
         tick = Date.now();
         let playerCopy = Object.assign({}, this.state.player);
         switch (arrowKey) {
             case 'ArrowUp':
-                playerCopy.y += 1;
+                playerCopy.y -= 1;
                 break;
             case 'ArrowDown':
-                playerCopy.y -= 1;
+                playerCopy.y += 1;
                 break;
             case 'ArrowRight':
                 playerCopy.x += 1;
@@ -168,9 +169,12 @@ export default React.createClass({
             default:
                 break;
         }
-        
+        console.log("Created playerCopy and assigned coordinates. Time from last tick: " + (Date.now() - tick));
+        tick = Date.now();
         if (this.state.world[playerCopy.x][playerCopy.y] === 1) {
             let occupierName = this.state.entityNamesByLoc[playerCopy.x + '-' + playerCopy.y] || null;
+            console.log("Find occupier of cell if one exists. Time from last tick: " + (Date.now() - tick));
+            tick = Date.now();
             if (occupierName && this.state[occupierName].health > 0) {
                 let occupier = this.state[occupierName];
                 switch (occupier.type) {
@@ -189,7 +193,10 @@ export default React.createClass({
                 }
             }
             else { // No occupier so lock in the move.
-                this.setState({player: playerCopy});
+                this.setState({player: playerCopy}, function(){
+                    console.log("setState completed. Time from last tick: " + (Date.now() - tick));
+                    tick = Date.now();
+                });
             }
         }
     },
@@ -208,15 +215,26 @@ export default React.createClass({
         this.setState({player: playerCopy, [entity.name]: entityCopy})
     },
     nextLevel(){
-        this.setState({entityNamesByLoc: {}, world: []}, () => {
-            this.setState({...this.getEntities(), world: getNewWorld() });  // Note the old entities remain.
+        // Todo - preserve the old world & record which entities belong to which level.
+        // Kill all currently living entities on the current level.
+        let deadEntities = {};
+        for(let e in this.state){
+            if(this.state.hasOwnProperty(e)){
+                if(e !== 'player' && this.state[e].type){
+                    deadEntities[e] = Object.assign({}, this.state[e], {health: 0});
+                }
+            }
+        }
+        let newLevel = this.state.level + 1;
+        this.setState({entityNamesByLoc: {}, world: [], ...deadEntities, level: newLevel}, () => {
+            this.setState({...this.getEntities(newLevel), world: getNewWorld()}, this.setStartingPositions);
         })
     },
     getEntities(level){
         let healthpacks, enemies, weapons, portals;
         switch(level){
             case 1:
-                [healthpacks, enemies, weapons, portals] = [3, 3, 2, 1];
+                [healthpacks, enemies, weapons, portals] = [3, 3, 2, 8]; // todo: change portals back to 1.
                 break;
             case 2:
                 [healthpacks, enemies, weapons, portals] = [4, 5, 2, 1];
@@ -225,7 +243,7 @@ export default React.createClass({
                 [healthpacks, enemies, weapons, portals] = [6, 9, 2, 2];
                 break;
             case 4:
-                [healthpacks, enemies, weapons, portals] = [7, 15, 2, 2];
+                [healthpacks, enemies, weapons, portals] = [7, 15, 2, 0];
                 break;
         }
         var weaponList = [['knife', 5], ['sword', 8], ['bow', 12], ['pistol', 16], ['rifle', 20], ['assault rifle', 30],
