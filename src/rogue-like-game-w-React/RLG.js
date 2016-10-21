@@ -1,12 +1,11 @@
 import React from 'react';
 
 /*
-* This React application has one parent container, which has all the state and logic. There is:
-*   - state.world: a 2d array representing a grid that is either part of a room or passage (1) or a wall (0)
-*   - state.player: An object representing the current player.
-*   - state.things: An object containing a list of entitiesByName.
-*
-*   Move. On each move the player's coordinates change and the corresponding component is re-rendered. The World
+* Todo. User graphlib to build the network of rooms and then make sure all are connected.
+* Todo. Keep track of all corridor cells to ensure no entities are placed in them.
+* Todo. Render the corridor cells one at a time so we can see them growing. Do this with a separate corridor object, then
+*       go through each cell and set it to open space.
+* Todo. Change entity creation so old ones remain - currently naming convention means they get replace (I think).
  */
 
 var tick;
@@ -18,7 +17,6 @@ var settings = {
     minRoomSize: 20, // cells
     maxCorridorLength: 20, // cells
     roomGenerationAttempts: 10000,
-    randomWalkAttempts: 1000,
     cellSize: 10 // pixels
 };
 
@@ -42,7 +40,11 @@ var Entity = React.createClass({
 });
 
 var World = React.createClass({
-    shouldComponentUpdate(nextProps){return this.props.level !== nextProps.level },
+    shouldComponentUpdate(nextProps){
+        let w1 = this.props.cellArray.reduce((prev, curr) => prev + curr.reduce((p, c) =>  p + c, 0), 0);
+        let w2 = nextProps.cellArray.reduce((prev, curr) => prev + curr.reduce((p, c) =>  p + c, 0), 0);
+        return w1 !== w2;
+    },
     render(){
         let {cellArray, offset} = this.props;
         let cells = [];
@@ -72,8 +74,10 @@ export default React.createClass({
     getInitialState(){
         // Keep all game state in this container. All other components will be pure (only properties passed from here).
         return {
-            world: getNewWorld(),
+            world: [],
             level: 1,
+            rooms: {},
+            corridors: {},
             player: {
                 x: 0,
                 y: 0,
@@ -83,20 +87,29 @@ export default React.createClass({
                 weapon: 'fist',
                 name: 'player'
             },
-            entityNamesByLoc: {},
-            ...this.getEntities(1)
+            entityNamesByLoc: {}
         }
     },
-    componentWillMount(){
-        var self = this;
-        this.setStartingPositions();
-        window.addEventListener("keydown", function (event) {
-            if (event.defaultPrevented) return; // Should do nothing if the key event was already consumed.
-            self.move(event.key);
-            // Consume the event to avoid it being handled twice
-            event.preventDefault();
-        }, true);
+    componentDidMount(){
+        this.generateLevel();
     },
+    generateLevel(){
+        var self = this;
+        self.createWorld()
+            .then(this.createEntities)
+            .then(self.createRooms)
+            .then(self.createCorridors)
+            .then(self.setStartingPositions)
+            .then(() => {
+                window.addEventListener("keydown", function (event) {
+                    if (event.defaultPrevented) return; // Should do nothing if the key event was already consumed.
+                    self.move(event.key);
+                    // Consume the event to avoid it being handled twice
+                    event.preventDefault();
+                }, true);
+            });
+    },
+    
     render(){
         let entityElements = Object.keys(this.state).map(e => {
             if(this.state[e].type) return <Entity key={e} entity={this.state[e]}/>;
@@ -119,7 +132,9 @@ export default React.createClass({
         let allocated = {}; // Need this because setState runs async.
         entityNames.forEach(eName => {
             let vacant = false;
-            while (vacant === false) {
+            let counter = 0;
+            while (vacant === false && counter < 1000) {
+                counter++;
                 let x = Math.round(Math.random() * (this.state.world.length - 1));
                 let y = Math.round(Math.random() * (this.state.world[0].length - 1));
                 if (this.state.world[x][y] === 1
@@ -131,8 +146,9 @@ export default React.createClass({
                 }
             }
         });
-        this.setState({entityNamesByLoc: Object.assign(this.state.entityNamesByLoc, allocated)});
+        return new Promise(resolve => this.setState({entityNamesByLoc: Object.assign(this.state.entityNamesByLoc, allocated)}, () => resolve('state updated')));
     },
+
     fight(enemy){
         var enemyCopy = Object.assign({}, enemy);
         var playerCopy = Object.assign({}, this.state.player);
@@ -226,199 +242,224 @@ export default React.createClass({
             }
         }
         let newLevel = this.state.level + 1;
-        this.setState({entityNamesByLoc: {}, world: [], ...deadEntities, level: newLevel}, () => {
-            this.setState({...this.getEntities(newLevel), world: getNewWorld()}, this.setStartingPositions);
-        })
+        this.setState({underConstruction: true, entityNamesByLoc: {}, world: [], ...deadEntities, level: newLevel}, () => this.generateLevel());
     },
-    getEntities(level){
-        let healthpacks, enemies, weapons, portals;
-        switch(level){
-            case 1:
-                [healthpacks, enemies, weapons, portals] = [3, 3, 2, 8]; // todo: change portals back to 1.
-                break;
-            case 2:
-                [healthpacks, enemies, weapons, portals] = [4, 5, 2, 1];
-                break;
-            case 3:
-                [healthpacks, enemies, weapons, portals] = [6, 9, 2, 2];
-                break;
-            case 4:
-                [healthpacks, enemies, weapons, portals] = [7, 15, 2, 0];
-                break;
-        }
-        var weaponList = [['knife', 5], ['sword', 8], ['bow', 12], ['pistol', 16], ['rifle', 20], ['assault rifle', 30],
+
+    createEntities(){
+        var self = this;
+        return new Promise((resolve, reject) => {
+            var newEntities = {};
+            const level = this.state.level;
+            let healthpacks, enemies, portals;
+            switch(level){
+                case 1:
+                    [healthpacks, enemies, portals] = [3, 3, 8]; // todo: change portals back to 1.
+                    break;
+                case 2:
+                    [healthpacks, enemies, portals] = [4, 5, 1];
+                    break;
+                case 3:
+                    [healthpacks, enemies, portals] = [6, 9, 2];
+                    break;
+                case 4:
+                    [healthpacks, enemies, portals] = [7, 15, 0];
+                    break;
+                default:
+                    break;
+            }
+            var weaponList = [['knife', 5], ['sword', 8], ['bow', 12], ['pistol', 16], ['rifle', 20], ['assault rifle', 30],
                 ['bazooka', 40], ['grenade-launcher', 60]]; // 2 per level (4 levels)
-        var newEntities = {};
-        for(let i = 0; i < healthpacks; i++){
-            let name = 'health-' + i;
-            newEntities[name] = {
-                name: name,
-                attack: 0,
-                health: 20,
-                type: 'health',
-                level: level
-            };
-        }
-        for(let i = 0; i < enemies; i++){
-            let name = 'enemy-' + i;
-            newEntities[name] = {
-                name: name,
-                attack: 5,
-                health: 20,
-                type: 'enemy',
-                level: level
-            };
-        }
-        for(let i = 0; i < 2; i++){ // Two weapons per level only - this is not a good design.
-            let name = 'weapon-' + i;
-            newEntities[name] = {
-                name: name,
-                attack: weaponList[(level - 1)*2 + i][1],
-                health: 1,
-                type: 'weapon',
-                level: level,
-                weapon: weaponList[(level - 1)*2 + i][0]
-            };
-        }
-        for(let i = 0; i < portals; i++){
-            let name = 'portal-' + i;
-            newEntities[name] = {
-                name: name,
-                attack: 0,
-                health: 1,
-                type: 'portal',
-                level: level
-            };
-        }
-        return newEntities;
+            for(let i = 0; i < healthpacks; i++){
+                let name = 'health-' + i;
+                newEntities[name] = {
+                    x: 0, y: 0,
+                    name: name,
+                    attack: 0,
+                    health: 20,
+                    type: 'health',
+                    level: level
+                };
+            }
+            for(let i = 0; i < enemies; i++){
+                let name = 'enemy-' + i;
+                newEntities[name] = {
+                    x: 0, y: 0,
+                    name: name,
+                    attack: 5,
+                    health: 20,
+                    type: 'enemy',
+                    level: level
+                };
+            }
+            for(let i = 0; i < 2; i++){ // Two weapons per level only - this is not a good design.
+                let name = 'weapon-' + i;
+                newEntities[name] = {
+                    x: 0, y: 0,
+                    name: name,
+                    attack: weaponList[(level - 1)*2 + i][1],
+                    health: 1,
+                    type: 'weapon',
+                    level: level,
+                    weapon: weaponList[(level - 1)*2 + i][0]
+                };
+            }
+            for(let i = 0; i < portals; i++){
+                let name = 'portal-' + i;
+                newEntities[name] = {
+                    x: 0, y: 0,
+                    name: name,
+                    attack: 0,
+                    health: 1,
+                    type: 'portal',
+                    level: level
+                };
+            }
+            self.setState({...newEntities}, () => resolve('state updated'))
+        });
     },
-});
-
-/*
-* Returns a 2d array with each value representing a square that can be occupied by a thing.
- */
-function getNewWorld(){
-    let newWorld = [];
-    let rooms = {};
-    let corridors = {};
-    for (var x = 0; x < settings.worldWidth; x++) {
-        newWorld[x] = [];
-        for (var y = 0; y < settings.worldHeight; y++) {
-            newWorld[x][y] = 0;
-        }
-    }
-    for(let i = 0; i < settings.roomGenerationAttempts; i++) {
-        makeRoom();
-    }
-
-    for(let roomCoords in rooms){
-        if(rooms.hasOwnProperty(roomCoords)){
-            var tunnelAttempts = 4; // change this to be more random.
-            for(let i = 0; i < tunnelAttempts; i++){
-                makeCorridor(rooms[roomCoords]);
+    createWorld(){
+        let self = this;
+        let newWorld = [];
+        for (var x = 0; x < settings.worldWidth; x++) {
+            newWorld[x] = [];
+            for (var y = 0; y < settings.worldHeight; y++) {
+                newWorld[x][y] = 0;
             }
         }
-    }
-    for(let i = 0; i < settings.randomWalkAttempts; i++){
-        // attempt to walk to every room by randomly selecting a door to travel through
+        return new Promise(resolve => self.setState({world: newWorld}, () => resolve('state updated')));
+    },
+    createRooms(){
 
-    }
+        let self = this;
+        let rooms = {};
+        let worldCopy = self.state.world.map(arr => arr.slice()); // make a copy not a reference.
+        let worldLength = worldCopy.length - 1;
+        let worldHeight = worldCopy[0].length - 1;
+        let promises = [];
 
-    return newWorld;
-
-    function makeRoom(){
-        let worldLength = newWorld.length -1;
-        let worldHeight = newWorld[0].length - 1;
-
-        let rect = {};
-        rect.x = Math.round(Math.random() * worldLength);
-        rect.y = Math.round(Math.random() * worldHeight);
-        rect.width = settings.minRoomSize + Math.round(Math.random() * (settings.maxRoomSize - settings.minRoomSize));
-        rect.height = settings.minRoomSize + Math.round(Math.random() * (settings.maxRoomSize - settings.minRoomSize));
-        // Check if it overlaps and if so, discard.
-        for(let x = rect.x; x < rect.x + rect.width; x++){
-            for(let y = rect.y; y < rect.y + rect.height; y++){
-                if(x > worldLength || y > worldHeight) return ; // discard (outside bounds)
-                if (newWorld[x][y] === 1) return ; // discard (overlapping another rect).
-            }
+        for(let i = 0; i < 10000; i++){
+            promises.push(tryCreateRoom());
         }
-        // shrink the rectangle
-        let room = {x: rect.x + 1, y: rect.y + 1, width: rect.width - 3, height: rect.height - 3};
-        rooms[room.x + '-' + room.y] = room;
-        for(let x = room.x; x < room.x + room.width; x++){
-            for(let y = room.y; y < room.y + room.height; y++){
-                newWorld[x][y] = 1;
-            }
-        }
-    }
 
-    function makeCorridor(room){
-        const roomKeys = Object.keys(rooms);
-        const {x, y, width, height} = room;
-        const direction = ['n', 's', 'e', 'w'][Math.round(Math.random() * 4 - 0.5)];
-        let startingPt = {};
-        let moveToNext;
-        switch(direction){
-            case 'n':
-                startingPt = {x: x + 2 + Math.round(Math.random() * (width - 4)), y: y};
-                moveToNext = (point) => Object.assign(point, {y: point.y - 1});
-                break;
-            case 's':
-                startingPt = {x: x + 2 + Math.round(Math.random() * (width - 4)), y: y + height - 1};
-                moveToNext = (point) => Object.assign(point, {y: point.y + 1});
-                break;
-            case 'e':
-                startingPt = {x: x + width - 1, y: y + Math.round(Math.random() * (height - 4))};
-                moveToNext = (point) => Object.assign(point, {x: point.x + 1});
-                break;
-            case 'w':
-                startingPt = {x: x, y: y + Math.round(Math.random() * (height - 4))};
-                moveToNext = (point) => Object.assign(point, {x: point.x - 1});
-                break;
-            default:
-                break;
-        }
-        let currentPt = Object.assign({}, startingPt);
-        for(let i = 0; i < settings.maxCorridorLength; i ++){
-            moveToNext(currentPt);
-            // eslint-disable-next-line
-            var intersectingRoomKey = roomKeys.find(rmKey => {
-                let rm = rooms[rmKey];
-                return currentPt.x >= rm.x && currentPt.x <= rm.x + rm.width
-                    && currentPt.y >= rm.y && currentPt.y <= rm.y + rm.height
-                    && rmKey !== room.x + '-' + room.y;
-            });
-            if(intersectingRoomKey){
-                let intersectingRoom = rooms[intersectingRoomKey];
-                let keyStr1 = room.x + '-' + room.y + '-to-' + intersectingRoom.x + '-' + intersectingRoom.y;
-                let keyStr2 = intersectingRoom.x + '-' + intersectingRoom.y + '-to-' + room.x + '-' + room.y;
-                if(corridors[keyStr1]) {
-                    return;
-                } // there is already a corridor between these rooms.
-                else {
-                    corridors[keyStr1] = {startingPt: startingPt};
-                    corridors[keyStr2] = {startingPt: startingPt};
-                    currentPt = startingPt;
-                    let keepDigging = true;
-                    while(keepDigging){
-                        moveToNext(currentPt);
-                        if(currentPt.x >= newWorld.length || currentPt.y >= newWorld[0].length
-                            || currentPt.x < 0 || currentPt.y < 0) {
-                            //debugger;
-                            break;
-                        }
-                        if(newWorld[currentPt.x][currentPt.y] === 1) {
-                            keepDigging = false;
-                            break;
-                        }
-                        newWorld[currentPt.x][currentPt.y] = 1
+        function tryCreateRoom() {
+            let rect = {};
+            let feasible = true;
+            rect.x = Math.round(Math.random() * worldLength);
+            rect.y = Math.round(Math.random() * worldHeight);
+            rect.width = settings.minRoomSize + Math.round(Math.random() * (settings.maxRoomSize - settings.minRoomSize));
+            rect.height = settings.minRoomSize + Math.round(Math.random() * (settings.maxRoomSize - settings.minRoomSize));
+            // Check if it overlaps and if so, discard.
+            for (let x = rect.x; x < rect.x + rect.width; x++) {
+                for (let y = rect.y; y < rect.y + rect.height; y++) {
+                    if (x > worldLength || y > worldHeight || worldCopy[x][y] === 1) { // outside boundary or overlapping
+                        feasible = false;
+                        x = rect.x + rect.width; // breaks out of the for loop for this rectangle check.
                     }
                 }
-                break;
+            }
+            if (feasible) {
+                // shrink the rectangle
+                let room = {x: rect.x + 1, y: rect.y + 1, width: rect.width - 3, height: rect.height - 3};
+                rooms[room.x + '-' + room.y] = room;
+                for (let x = room.x; x < room.x + room.width; x++) {
+                    for (let y = room.y; y < room.y + room.height; y++) {
+                        worldCopy[x][y] = 1;
+                    }
+                }
+                return new Promise(resolve => {
+                    self.setState({world: worldCopy, rooms: rooms}, () => {
+                        console.log('Room added.');
+                        setTimeout(() => resolve('room placed'), 500);
+                    }); // render each room as they are created.
+                });
+            }
+        }
+        return Promise.all(promises);
+    },
+    createCorridors(){
+        let self = this;
+        let worldCopy = this.state.world.map(arr => arr.slice());
+        let corridorsCopy = Object.assign({}, this.state.corridors);
+        let rooms = this.state.rooms;
+        const roomKeys = Object.keys(rooms);
+        const tunnelAttempts = 4; // Attempt to find a viable corridor 4 times per room.
+        roomKeys.forEach((key) => {
+            for (let i = 0; i < tunnelAttempts; i++) {
+                makeCorridor(rooms[key]);
+            }
+        });
+        return new Promise((resolve, reject) => {
+            self.setState({world: worldCopy}, () => resolve('state updated'));
+        });
+
+        function makeCorridor(room) {
+            const {x, y, width, height} = room;
+            const direction = ['n', 's', 'e', 'w'][Math.round(Math.random() * 4 - 0.5)];
+            let startingPt = {};
+            let moveToNext;
+            switch (direction) {
+                case 'n':
+                    startingPt = {x: x + 2 + Math.round(Math.random() * (width - 4)), y: y};
+                    moveToNext = (point) => Object.assign(point, {y: point.y - 1});
+                    break;
+                case 's':
+                    startingPt = {x: x + 2 + Math.round(Math.random() * (width - 4)), y: y + height - 1};
+                    moveToNext = (point) => Object.assign(point, {y: point.y + 1});
+                    break;
+                case 'e':
+                    startingPt = {x: x + width - 1, y: y + Math.round(Math.random() * (height - 4))};
+                    moveToNext = (point) => Object.assign(point, {x: point.x + 1});
+                    break;
+                case 'w':
+                    startingPt = {x: x, y: y + Math.round(Math.random() * (height - 4))};
+                    moveToNext = (point) => Object.assign(point, {x: point.x - 1});
+                    break;
+                default:
+                    break;
+            }
+            let currentPt = Object.assign({}, startingPt);
+            for (let i = 0; i < settings.maxCorridorLength; i++) {
+                moveToNext(currentPt);
+                // eslint-disable-next-line
+                var intersectingRoomKey = roomKeys.find(rmKey => {
+                    let rm = rooms[rmKey];
+                    return currentPt.x >= rm.x + 2 && currentPt.x <= rm.x + rm.width - 2  // +-2 prevents corridors right on the edge.
+                        && currentPt.y >= rm.y + 2 && currentPt.y <= rm.y + rm.height - 2
+                        && rmKey !== room.x + '-' + room.y;
+                });
+                if (intersectingRoomKey) {
+                    let intersectingRoom = rooms[intersectingRoomKey];
+                    let keyStr1 = room.x + '-' + room.y + '-to-' + intersectingRoom.x + '-' + intersectingRoom.y;
+                    let keyStr2 = intersectingRoom.x + '-' + intersectingRoom.y + '-to-' + room.x + '-' + room.y;
+                    if (corridorsCopy[keyStr1]) {
+                        return;
+                    } // there is already a corridor between these rooms.
+                    else {
+                        corridorsCopy[keyStr1] = {startingPt: startingPt};
+                        corridorsCopy[keyStr2] = {startingPt: startingPt};
+                        currentPt = startingPt;
+                        let keepDigging = true;
+                        while (keepDigging) {
+                            moveToNext(currentPt);
+                            if (currentPt.x >= worldCopy.length || currentPt.y >= worldCopy[0].length
+                                || currentPt.x < 0 || currentPt.y < 0) {
+                                //debugger;
+                                break;
+                            }
+                            if (worldCopy[currentPt.x][currentPt.y] === 1) {
+                                keepDigging = false;
+                                break;
+                            }
+                            worldCopy[currentPt.x][currentPt.y] = 1;
+                        }
+                    }
+                    break;
+                }
             }
         }
     }
-}
+});
+
 
 
 
