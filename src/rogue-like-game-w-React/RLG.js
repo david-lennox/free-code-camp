@@ -19,7 +19,8 @@ var settings = {
     maxCorridorLength: 20, // cells
     roomGenerationAttempts: 10000,
     cellSize: 10, // pixels
-    timeBetweenRoomRender: 100
+    timeBetweenRoomRender: 100,
+    tunnelAttemptsPerRoom: 20
 };
 
 var Entity = React.createClass({
@@ -386,10 +387,10 @@ export default React.createClass({
         let rooms = this.state.rooms;
         const roomKeys = Object.keys(rooms);
         roomKeys.forEach(key => g.setNode(key));
-        const tunnelAttempts = 4; // Attempt to find a viable corridor 4 times per room.
+        const tunnelAttemptsPerRoom = settings.tunnelAttemptsPerRoom; // Attempt to find a viable corridor 4 times per room.
         roomKeys.forEach((currentRmKey) => {
             let currentRm = rooms[currentRmKey];
-            for (let i = 0; i < tunnelAttempts; i++) {
+            for (let i = 0; i < tunnelAttemptsPerRoom; i++) {
                 const direction = ['n', 's', 'e', 'w'][Math.round(Math.random() * 4 - 0.5)];
                 let startingPt = {};
                 let moveToNext;
@@ -421,18 +422,14 @@ export default React.createClass({
                         if(g.edge(currentRmKey, intersectingRoomKey)) break;
                         else {
                             let endPt = Object.assign({}, currentPt);
-                            g.setEdge(currentRmKey, intersectingRoomKey);
-                            currentPt = startingPt;
-                            let keepDigging = true;
-                            while (keepDigging) {
+                            g.setEdge(currentRmKey, intersectingRoomKey, currentRmKey + 'to' + intersectingRoomKey);
+                            currentPt = Object.assign({}, startingPt);
+                            while (JSON.stringify(currentPt) !== JSON.stringify(endPt)) {
                                 moveToNext(currentPt);
-                                if (JSON.stringify(currentPt) === JSON.stringify(endPt)) {
-                                    keepDigging = false;
-                                    break;
-                                }
                                 worldCopy[currentPt.x][currentPt.y] = 1;
                             }
                         }
+                        break;
                     }
                 }
             }
