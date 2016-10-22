@@ -5,6 +5,7 @@ import graphlib from 'graphlib';
 * Todo. Or, make corridors separate from the World and allow movement through corridors but not placement of entities
 *   - this will also speed up render of corridors if doing sequential rendering of each cell.
 * Todo. Change entity creation so old ones remain - currently naming convention means they get replace (I think).
+* Todo. Refactor to have settings.gameWidth in pixels and calculate cell pixel dimension. 
  */
 
 var settings = {
@@ -46,7 +47,7 @@ var World = React.createClass({
         return w1 !== w2;
     },
     render(){
-        let {cellArray, offset} = this.props;
+        let {cellArray} = this.props;
         let cells = [];
         for(let x = 0; x < cellArray.length; x++){
             for(let y = 0; y < cellArray[x].length; y++){
@@ -61,14 +62,33 @@ var World = React.createClass({
                 cells.push(<div key={x + '-' + y} style={cellStyle}></div>)
             }
         }
-        let worldStyle = {
-            top: offset.y,
-            left: offset.x,
-        };
-        return <div id="world" style={worldStyle}>{cells}</div>
+        return <div id="world">{cells}</div>
     }
 });
-
+var ViewPort = React.createClass({
+    render(){
+        let viewPortStyle = {
+            position: "relative",
+            width: settings.viewPortWidth,
+            height: settings.viewPortHeight,
+        };
+        let worldContainerStyle = {
+            position: "absolute",
+            width: settings.worldWidth * settings.cellSize,
+            height: settings.worldHeight * settings.cellSize,
+            left: this.props.offset.x,
+            top: this.props.offset.y,
+            overflow: "hidden"
+        };
+        return (
+            <div style={viewPortStyle}>
+                <div style={worldContainerStyle}>
+                    {this.props.children}
+                </div>
+            </div>
+        )
+    }
+});
 // This is the container component with all the state and logic.
 export default React.createClass({
     getInitialState(){
@@ -116,30 +136,28 @@ export default React.createClass({
             if(this.state[e].type) return <Entity key={e} entity={this.state[e]}/>;
             else return null;
         });
-
-        let viewPortStyle = {
-            position: "relative",
-            width: settings.viewPortWidth,
-            height: settings.viewPortHeight,
-        };
-
         return (
-            <div style={viewPortStyle}>
-                <World level={this.state.level} cellArray={this.state.world} offset={this.getOffset()}/>
+            <ViewPort offset={this.getOffset()}>
+                <World level={this.state.level} cellArray={this.state.world}/>
                 {entityElements}
-            </div>
+            </ViewPort>
         )
     },
     getOffset(){
-        if (this.state.player.x !== 0) {
-            debugger;
-        }
-        return {
-            x: (this.state.player.x - settings.viewPortWidth/2) * -1,
-            y: (this.state.player.y - settings.viewPortHeight/2) * -1
-        };
-
+        const {viewPortWidth, viewPortHeight, cellSize, worldWidth, worldHeight} = settings;
+        let offset = {};
+        offset.x = (viewPortWidth/2 - this.state.player.x * cellSize);
+        offset.x = offset.x > 0 ? 0 : offset.x < (viewPortWidth - worldWidth * cellSize) ? 
+            (viewPortWidth - worldWidth * cellSize) : offset.x;
+        offset.y = (viewPortHeight/2 - this.state.player.y * cellSize);
+        offset.y = offset.y > 0 ? 0 : offset.y < (viewPortHeight - worldHeight * cellSize) ?
+            (viewPortHeight - worldHeight * cellSize) : offset.y;
+        return offset;
     },
+
+
+
+
     setStartingPositions(){
         let self = this;
         let entityNames = Object.keys(this.state).filter(eName =>
