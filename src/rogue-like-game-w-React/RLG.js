@@ -57,7 +57,7 @@ var World = React.createClass({
                     position: 'absolute',
                     left: x * settings.cellSize,
                     top: y * settings.cellSize,
-                    backgroundColor: cellArray[x][y] === 1 ? 'white' : 'black'
+                    backgroundColor: cellArray[x][y] === 1 ? 'white' : 'brown'
                 };
                 cells.push(<div key={x + '-' + y} style={cellStyle}></div>)
             }
@@ -71,24 +71,42 @@ var ViewPort = React.createClass({
             position: "relative",
             width: settings.viewPortWidth,
             height: settings.viewPortHeight,
+            overflow: "hidden",
+            margin: "auto"
         };
         let worldContainerStyle = {
             position: "absolute",
             width: settings.worldWidth * settings.cellSize,
             height: settings.worldHeight * settings.cellSize,
             left: this.props.offset.x,
-            top: this.props.offset.y,
-            overflow: "hidden"
+            top: this.props.offset.y
+        };
+        let darknessMaskStyle = {
+            position: "absolute",
+            width: settings.viewPortWidth,
+            height: settings.viewPortHeight,
+            fill: "grey"
         };
         return (
             <div style={viewPortStyle}>
                 <div style={worldContainerStyle}>
                     {this.props.children}
                 </div>
+                <svg style={darknessMaskStyle} xmlns="http://www.w3.org/2000/svg">
+                    <path d={`M0 0 H ${settings.viewPortWidth} V ${settings.viewPortHeight} H 0 z`}/>
+                    <circle cx="10" cy="10" r="2" fill="red"/>
+                    <circle cx="90" cy="90" r="2" fill="red"/>
+                    <circle cx="90" cy="10" r="2" fill="red"/>
+                    <circle cx="10" cy="90" r="2" fill="red"/>
+
+                </svg>
             </div>
         )
     }
 });
+
+
+
 // This is the container component with all the state and logic.
 export default React.createClass({
     getInitialState(){
@@ -137,10 +155,12 @@ export default React.createClass({
             else return null;
         });
         return (
-            <ViewPort offset={this.getOffset()}>
-                <World level={this.state.level} cellArray={this.state.world}/>
-                {entityElements}
-            </ViewPort>
+            <div>
+                <ViewPort offset={this.getOffset()}>
+                    <World level={this.state.level} cellArray={this.state.world}/>
+                    {entityElements}
+                </ViewPort>
+            </div>
         )
     },
     getOffset(){
@@ -154,10 +174,6 @@ export default React.createClass({
             (viewPortHeight - worldHeight * cellSize) : offset.y;
         return offset;
     },
-
-
-
-
     setStartingPositions(){
         let self = this;
         let entityNames = Object.keys(this.state).filter(eName =>
