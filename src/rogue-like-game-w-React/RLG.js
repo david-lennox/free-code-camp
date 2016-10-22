@@ -15,7 +15,9 @@ var settings = {
     maxCorridorLength: 20, // cells
     roomGenerationAttempts: 10000,
     cellSize: 10, // pixels
-    timeBetweenRoomRender: 100
+    timeBetweenRoomRender: 100,
+    viewPortWidth: 600,
+    viewPortHeight: 400
 };
 
 var Entity = React.createClass({
@@ -61,7 +63,7 @@ var World = React.createClass({
         }
         let worldStyle = {
             top: offset.y,
-            left: offset.x
+            left: offset.x,
         };
         return <div id="world" style={worldStyle}>{cells}</div>
     }
@@ -114,15 +116,29 @@ export default React.createClass({
             if(this.state[e].type) return <Entity key={e} entity={this.state[e]}/>;
             else return null;
         });
+
+        let viewPortStyle = {
+            position: "relative",
+            width: settings.viewPortWidth,
+            height: settings.viewPortHeight,
+        };
+
         return (
-            <div className="game">
+            <div style={viewPortStyle}>
                 <World level={this.state.level} cellArray={this.state.world} offset={this.getOffset()}/>
                 {entityElements}
             </div>
         )
     },
     getOffset(){
-        return 0;
+        if (this.state.player.x !== 0) {
+            debugger;
+        }
+        return {
+            x: (this.state.player.x - settings.viewPortWidth/2) * -1,
+            y: (this.state.player.y - settings.viewPortHeight/2) * -1
+        };
+
     },
     setStartingPositions(){
         let self = this;
@@ -152,8 +168,10 @@ export default React.createClass({
     fight(enemy){
         var enemyCopy = Object.assign({}, enemy);
         var playerCopy = Object.assign({}, this.state.player);
+        console.log(`Argghh... you bastard, now I will kill you with my ${playerCopy.weapon}!`);
         enemyCopy.health -= this.state.player.attack;
         playerCopy.health -= enemy.attack;
+        console.log(`Lost ${enemy.attack} health. ${playerCopy.health} remaining`);
         if(playerCopy.health < 1) this.gameOver();  // Player is dead.
         else if(enemyCopy.health < 1) {
             playerCopy.x = enemy.x;
@@ -244,7 +262,7 @@ export default React.createClass({
             let healthpacks, enemies, portals;
             switch(level){
                 case 1:
-                    [healthpacks, enemies, portals] = [100, 100, 100]; // todo: change portals back to 1.
+                    [healthpacks, enemies, portals] = [1, 1, 1]; // todo: change portals back to 1.
                     break;
                 case 2:
                     [healthpacks, enemies, portals] = [4, 5, 1];
