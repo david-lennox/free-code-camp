@@ -1,15 +1,11 @@
 import React from 'react';
-import {Graph} from 'graphlib';
+import graphlib from 'graphlib';
 
 /*
-* Todo. User graphlib to build the network of rooms and then make sure all are connected.
-* Todo. Keep track of all corridor cells to ensure no entities are placed in them.
 * Todo. Or, make corridors separate from the World and allow movement through corridors but not placement of entities
 *   - this will also speed up render of corridors if doing sequential rendering of each cell.
 * Todo. Change entity creation so old ones remain - currently naming convention means they get replace (I think).
  */
-
-var tick;
 
 var settings = {
     worldWidth: 100,  // cells
@@ -19,8 +15,7 @@ var settings = {
     maxCorridorLength: 20, // cells
     roomGenerationAttempts: 10000,
     cellSize: 10, // pixels
-    timeBetweenRoomRender: 100,
-    tunnelAttemptsPerRoom: 20
+    timeBetweenRoomRender: 100
 };
 
 var Entity = React.createClass({
@@ -90,7 +85,8 @@ export default React.createClass({
                 weapon: 'fist',
                 name: 'player'
             },
-            entityNamesByLoc: {}
+            entityNamesByLoc: {},
+            corridorCells: {}
         }
     },
     componentDidMount(){
@@ -142,7 +138,8 @@ export default React.createClass({
                 let y = Math.round(Math.random() * (this.state.world[0].length - 1));
                 if (this.state.world[x][y] === 1
                     && !this.state.entityNamesByLoc[x + '-' + y]
-                    && !allocated[x + '-' + y]) {
+                    && !allocated[x + '-' + y]
+                    && !this.state.corridorCells.includes(x + '-' + y)) {
                     vacant = true;
                     self.setState({[eName]: Object.assign(this.state[eName], {x: x, y: y})});
                     if(eName !== 'player') allocated[x + '-' + y] = eName;
@@ -169,8 +166,6 @@ export default React.createClass({
         });
     },
     move(arrowKey){
-        console.log("Enter move function. Time from last tick: " + (Date.now() - tick));
-        tick = Date.now();
         let playerCopy = Object.assign({}, this.state.player);
         switch (arrowKey) {
             case 'ArrowUp':
@@ -188,12 +183,8 @@ export default React.createClass({
             default:
                 break;
         }
-        console.log("Created playerCopy and assigned coordinates. Time from last tick: " + (Date.now() - tick));
-        tick = Date.now();
         if (this.state.world[playerCopy.x][playerCopy.y] === 1) {
             let occupierName = this.state.entityNamesByLoc[playerCopy.x + '-' + playerCopy.y] || null;
-            console.log("Find occupier of cell if one exists. Time from last tick: " + (Date.now() - tick));
-            tick = Date.now();
             if (occupierName && this.state[occupierName].health > 0) {
                 let occupier = this.state[occupierName];
                 switch (occupier.type) {
@@ -211,12 +202,7 @@ export default React.createClass({
                         break;
                 }
             }
-            else { // No occupier so lock in the move.
-                this.setState({player: playerCopy}, function(){
-                    console.log("setState completed. Time from last tick: " + (Date.now() - tick));
-                    tick = Date.now();
-                });
-            }
+            else this.setState({player: playerCopy});
         }
     },
     collect(entity){
@@ -231,6 +217,8 @@ export default React.createClass({
             health: 0,
             attack: 0
         });
+        if(entity.type === 'health') console.log(`Ahhhh... that's better. Health + ${entity.health}`);
+        if(entity.type === 'weapon') console.log(`Cool man!! A ${entity.weapon}`);
         this.setState({player: playerCopy, [entity.name]: entityCopy})
     },
     nextLevel(){
@@ -256,7 +244,7 @@ export default React.createClass({
             let healthpacks, enemies, portals;
             switch(level){
                 case 1:
-                    [healthpacks, enemies, portals] = [3, 3, 8]; // todo: change portals back to 1.
+                    [healthpacks, enemies, portals] = [100, 100, 100]; // todo: change portals back to 1.
                     break;
                 case 2:
                     [healthpacks, enemies, portals] = [4, 5, 1];
@@ -382,61 +370,65 @@ export default React.createClass({
     },
     createCorridors(){
         let self = this;
-        let g = new Graph({directed: false});
+        let g = new graphlib.Graph({directed: false});
         let worldCopy = this.state.world.map(arr => arr.slice());
         let rooms = this.state.rooms;
         const roomKeys = Object.keys(rooms);
+        let corridorCells = [];
         roomKeys.forEach(key => g.setNode(key));
-        const tunnelAttemptsPerRoom = settings.tunnelAttemptsPerRoom; // Attempt to find a viable corridor 4 times per room.
-        roomKeys.forEach((currentRmKey) => {
+        while(graphlib.alg.components(g).length > 1) {  // One component means there's a path to all rooms.
+            roomKeys.forEach(currentRmKey => tryDigCorridor(currentRmKey));
+        }
+        return new Promise((resolve, reject) => {
+            self.setState({world: worldCopy, corridorCells: corridorCells}, () => resolve('corridors updated'));
+        });
+        function tryDigCorridor(currentRmKey){
             let currentRm = rooms[currentRmKey];
-            for (let i = 0; i < tunnelAttemptsPerRoom; i++) {
-                const direction = ['n', 's', 'e', 'w'][Math.round(Math.random() * 4 - 0.5)];
-                let startingPt = {};
-                let moveToNext;
-                switch (direction) {
-                    case 'n':
-                        startingPt = {x: currentRm.x + 2 + Math.round(Math.random() * (currentRm.width - 4)), y: currentRm.y};
-                        moveToNext = (point) => Object.assign(point, {y: point.y - 1});
-                        break;
-                    case 's':
-                        startingPt = {x: currentRm.x + 2 + Math.round(Math.random() * (currentRm.width - 4)), y: currentRm.y + currentRm.height - 1};
-                        moveToNext = (point) => Object.assign(point, {y: point.y + 1});
-                        break;
-                    case 'e':
-                        startingPt = {x: currentRm.x + currentRm.width - 1, y: currentRm.y + Math.round(Math.random() * (currentRm.height - 4))};
-                        moveToNext = (point) => Object.assign(point, {x: point.x + 1});
-                        break;
-                    case 'w':
-                        startingPt = {x: currentRm.x, y: currentRm.y + Math.round(Math.random() * (currentRm.height - 4))};
-                        moveToNext = (point) => Object.assign(point, {x: point.x - 1});
-                        break;
-                    default:
-                        break;
-                }
-                let currentPt = Object.assign({}, startingPt);
-                for (let i = 0; i < settings.maxCorridorLength; i++) {
-                    moveToNext(currentPt);
-                    let intersectingRoomKey = getIntersectingRoomKey(currentPt);
-                    if (intersectingRoomKey) {
-                        if(g.edge(currentRmKey, intersectingRoomKey)) break;
-                        else {
-                            let endPt = Object.assign({}, currentPt);
-                            g.setEdge(currentRmKey, intersectingRoomKey, currentRmKey + 'to' + intersectingRoomKey);
-                            currentPt = Object.assign({}, startingPt);
-                            while (JSON.stringify(currentPt) !== JSON.stringify(endPt)) {
-                                moveToNext(currentPt);
-                                worldCopy[currentPt.x][currentPt.y] = 1;
-                            }
+            const direction = ['n', 's', 'e', 'w'][Math.round(Math.random() * 4 - 0.5)];
+            let startingPt = {};
+            let moveToNext;
+            switch (direction) {
+                case 'n':
+                    startingPt = {x: currentRm.x + 2 + Math.round(Math.random() * (currentRm.width - 4)), y: currentRm.y};
+                    moveToNext = (point) => Object.assign(point, {y: point.y - 1});
+                    break;
+                case 's':
+                    startingPt = {x: currentRm.x + 2 + Math.round(Math.random() * (currentRm.width - 4)), y: currentRm.y + currentRm.height - 1};
+                    moveToNext = (point) => Object.assign(point, {y: point.y + 1});
+                    break;
+                case 'e':
+                    startingPt = {x: currentRm.x + currentRm.width - 1, y: currentRm.y + Math.round(Math.random() * (currentRm.height - 4))};
+                    moveToNext = (point) => Object.assign(point, {x: point.x + 1});
+                    break;
+                case 'w':
+                    startingPt = {x: currentRm.x, y: currentRm.y + Math.round(Math.random() * (currentRm.height - 4))};
+                    moveToNext = (point) => Object.assign(point, {x: point.x - 1});
+                    break;
+                default:
+                    break;
+            }
+            let currentPt = Object.assign({}, startingPt);
+            for (let i = 0; i < settings.maxCorridorLength; i++) {
+                moveToNext(currentPt);
+                let intersectingRoomKey = getIntersectingRoomKey(currentPt);
+                if (intersectingRoomKey) {
+                    if(g.edge(currentRmKey, intersectingRoomKey)) break; // only want single join between any two rooms.
+                    else {
+                        let endPt = Object.assign({}, currentPt);
+                        corridorCells.push(`${endPt.x}-${endPt.y}`);
+                        g.setEdge(currentRmKey, intersectingRoomKey, currentRmKey + 'to' + intersectingRoomKey);
+                        currentPt = Object.assign({}, startingPt);
+                        while (JSON.stringify(currentPt) !== JSON.stringify(endPt)) {
+                            corridorCells.push(`${currentPt.x}-${currentPt.y}`); // includes the start point but not end.
+                            moveToNext(currentPt);
+                            worldCopy[currentPt.x][currentPt.y] = 1;
                         }
-                        break;
                     }
+                    break;
                 }
             }
-        });
-        return new Promise((resolve, reject) => {
-            self.setState({world: worldCopy}, () => resolve('corridors updated'));
-        });
+
+        }
         function getIntersectingRoomKey(currentPt) {
             var intersectingRoomKey = roomKeys.find(rmKey => {
                 let rm = rooms[rmKey];
