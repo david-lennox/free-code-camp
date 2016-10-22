@@ -17,7 +17,8 @@ var settings = {
     minRoomSize: 20, // cells
     maxCorridorLength: 20, // cells
     roomGenerationAttempts: 10000,
-    cellSize: 10 // pixels
+    cellSize: 10, // pixels
+    timeBetweenRoomRender: 1000
 };
 
 var Entity = React.createClass({
@@ -336,12 +337,9 @@ export default React.createClass({
         let worldLength = worldCopy.length - 1;
         let worldHeight = worldCopy[0].length - 1;
         let promises = [];
+        let startTime = Date.now();
 
         for(let i = 0; i < 10000; i++){
-            promises.push(tryCreateRoom());
-        }
-
-        function tryCreateRoom() {
             let rect = {};
             let feasible = true;
             rect.x = Math.round(Math.random() * worldLength);
@@ -366,12 +364,16 @@ export default React.createClass({
                         worldCopy[x][y] = 1;
                     }
                 }
-                return new Promise(resolve => {
-                    self.setState({world: worldCopy, rooms: rooms}, () => {
-                        console.log('Room added.');
-                        setTimeout(() => resolve('room placed'), 500);
-                    }); // render each room as they are created.
+                let delay = (startTime + (promises.length + 1) * settings.timeBetweenRoomRender) - Date.now();
+                if(delay < 0) delay = 500;
+                let p = new Promise(resolve => {
+                    // make a snapshot to place at the specified interval.
+                    let snapShot = worldCopy.map(arr => arr.slice());
+                    setTimeout(() => {
+                        self.setState({world: snapShot, rooms: rooms}, () => resolve('added new room.'));
+                    }, delay)
                 });
+                promises.push(p);
             }
         }
         return Promise.all(promises);
