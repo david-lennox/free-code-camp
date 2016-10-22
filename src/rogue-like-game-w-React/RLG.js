@@ -1,10 +1,11 @@
 import React from 'react';
+import {Graph} from 'graphlib';
 
 /*
 * Todo. User graphlib to build the network of rooms and then make sure all are connected.
 * Todo. Keep track of all corridor cells to ensure no entities are placed in them.
-* Todo. Render the corridor cells one at a time so we can see them growing. Do this with a separate corridor object, then
-*       go through each cell and set it to open space.
+* Todo. Or, make corridors separate from the World and allow movement through corridors but not placement of entities
+*   - this will also speed up render of corridors if doing sequential rendering of each cell.
 * Todo. Change entity creation so old ones remain - currently naming convention means they get replace (I think).
  */
 
@@ -18,7 +19,7 @@ var settings = {
     maxCorridorLength: 20, // cells
     roomGenerationAttempts: 10000,
     cellSize: 10, // pixels
-    timeBetweenRoomRender: 1000
+    timeBetweenRoomRender: 100
 };
 
 var Entity = React.createClass({
@@ -380,84 +381,72 @@ export default React.createClass({
     },
     createCorridors(){
         let self = this;
+        let g = new Graph({directed: false});
         let worldCopy = this.state.world.map(arr => arr.slice());
-        let corridorsCopy = Object.assign({}, this.state.corridors);
         let rooms = this.state.rooms;
         const roomKeys = Object.keys(rooms);
+        roomKeys.forEach(key => g.setNode(key));
         const tunnelAttempts = 4; // Attempt to find a viable corridor 4 times per room.
-        roomKeys.forEach((key) => {
+        roomKeys.forEach((currentRmKey) => {
+            let currentRm = rooms[currentRmKey];
             for (let i = 0; i < tunnelAttempts; i++) {
-                makeCorridor(rooms[key]);
+                const direction = ['n', 's', 'e', 'w'][Math.round(Math.random() * 4 - 0.5)];
+                let startingPt = {};
+                let moveToNext;
+                switch (direction) {
+                    case 'n':
+                        startingPt = {x: currentRm.x + 2 + Math.round(Math.random() * (currentRm.width - 4)), y: currentRm.y};
+                        moveToNext = (point) => Object.assign(point, {y: point.y - 1});
+                        break;
+                    case 's':
+                        startingPt = {x: currentRm.x + 2 + Math.round(Math.random() * (currentRm.width - 4)), y: currentRm.y + currentRm.height - 1};
+                        moveToNext = (point) => Object.assign(point, {y: point.y + 1});
+                        break;
+                    case 'e':
+                        startingPt = {x: currentRm.x + currentRm.width - 1, y: currentRm.y + Math.round(Math.random() * (currentRm.height - 4))};
+                        moveToNext = (point) => Object.assign(point, {x: point.x + 1});
+                        break;
+                    case 'w':
+                        startingPt = {x: currentRm.x, y: currentRm.y + Math.round(Math.random() * (currentRm.height - 4))};
+                        moveToNext = (point) => Object.assign(point, {x: point.x - 1});
+                        break;
+                    default:
+                        break;
+                }
+                let currentPt = Object.assign({}, startingPt);
+                for (let i = 0; i < settings.maxCorridorLength; i++) {
+                    moveToNext(currentPt);
+                    let intersectingRoomKey = getIntersectingRoomKey(currentPt);
+                    if (intersectingRoomKey) {
+                        if(g.edge(currentRmKey, intersectingRoomKey)) break;
+                        else {
+                            let endPt = Object.assign({}, currentPt);
+                            g.setEdge(currentRmKey, intersectingRoomKey);
+                            currentPt = startingPt;
+                            let keepDigging = true;
+                            while (keepDigging) {
+                                moveToNext(currentPt);
+                                if (JSON.stringify(currentPt) === JSON.stringify(endPt)) {
+                                    keepDigging = false;
+                                    break;
+                                }
+                                worldCopy[currentPt.x][currentPt.y] = 1;
+                            }
+                        }
+                    }
+                }
             }
         });
         return new Promise((resolve, reject) => {
-            self.setState({world: worldCopy}, () => resolve('state updated'));
+            self.setState({world: worldCopy}, () => resolve('corridors updated'));
         });
-
-        function makeCorridor(room) {
-            const {x, y, width, height} = room;
-            const direction = ['n', 's', 'e', 'w'][Math.round(Math.random() * 4 - 0.5)];
-            let startingPt = {};
-            let moveToNext;
-            switch (direction) {
-                case 'n':
-                    startingPt = {x: x + 2 + Math.round(Math.random() * (width - 4)), y: y};
-                    moveToNext = (point) => Object.assign(point, {y: point.y - 1});
-                    break;
-                case 's':
-                    startingPt = {x: x + 2 + Math.round(Math.random() * (width - 4)), y: y + height - 1};
-                    moveToNext = (point) => Object.assign(point, {y: point.y + 1});
-                    break;
-                case 'e':
-                    startingPt = {x: x + width - 1, y: y + Math.round(Math.random() * (height - 4))};
-                    moveToNext = (point) => Object.assign(point, {x: point.x + 1});
-                    break;
-                case 'w':
-                    startingPt = {x: x, y: y + Math.round(Math.random() * (height - 4))};
-                    moveToNext = (point) => Object.assign(point, {x: point.x - 1});
-                    break;
-                default:
-                    break;
-            }
-            let currentPt = Object.assign({}, startingPt);
-            for (let i = 0; i < settings.maxCorridorLength; i++) {
-                moveToNext(currentPt);
-                // eslint-disable-next-line
-                var intersectingRoomKey = roomKeys.find(rmKey => {
-                    let rm = rooms[rmKey];
-                    return currentPt.x >= rm.x + 2 && currentPt.x <= rm.x + rm.width - 2  // +-2 prevents corridors right on the edge.
-                        && currentPt.y >= rm.y + 2 && currentPt.y <= rm.y + rm.height - 2
-                        && rmKey !== room.x + '-' + room.y;
-                });
-                if (intersectingRoomKey) {
-                    let intersectingRoom = rooms[intersectingRoomKey];
-                    let keyStr1 = room.x + '-' + room.y + '-to-' + intersectingRoom.x + '-' + intersectingRoom.y;
-                    let keyStr2 = intersectingRoom.x + '-' + intersectingRoom.y + '-to-' + room.x + '-' + room.y;
-                    if (corridorsCopy[keyStr1]) {
-                        return;
-                    } // there is already a corridor between these rooms.
-                    else {
-                        corridorsCopy[keyStr1] = {startingPt: startingPt};
-                        corridorsCopy[keyStr2] = {startingPt: startingPt};
-                        currentPt = startingPt;
-                        let keepDigging = true;
-                        while (keepDigging) {
-                            moveToNext(currentPt);
-                            if (currentPt.x >= worldCopy.length || currentPt.y >= worldCopy[0].length
-                                || currentPt.x < 0 || currentPt.y < 0) {
-                                //debugger;
-                                break;
-                            }
-                            if (worldCopy[currentPt.x][currentPt.y] === 1) {
-                                keepDigging = false;
-                                break;
-                            }
-                            worldCopy[currentPt.x][currentPt.y] = 1;
-                        }
-                    }
-                    break;
-                }
-            }
+        function getIntersectingRoomKey(currentPt) {
+            var intersectingRoomKey = roomKeys.find(rmKey => {
+                let rm = rooms[rmKey];
+                return currentPt.x >= rm.x + 2 && currentPt.x <= rm.x + rm.width - 2  // +-2 prevents corridors right on the edge.
+                    && currentPt.y >= rm.y + 2 && currentPt.y <= rm.y + rm.height - 2
+            });
+            return intersectingRoomKey ? intersectingRoomKey : null;
         }
     }
 });
