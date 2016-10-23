@@ -5,7 +5,8 @@ import graphlib from 'graphlib';
 * Todo. Or, make corridors separate from the World and allow movement through corridors but not placement of entities
 *   - this will also speed up render of corridors if doing sequential rendering of each cell.
 * Todo. Change entity creation so old ones remain - currently naming convention means they get replace (I think).
-* Todo. Refactor to have settings.gameWidth in pixels and calculate cell pixel dimension. 
+* Todo. Refactor to have settings.gameWidth in pixels and calculate cell pixel dimension.
+* Todo. Draw svg rectangles for the world rather than div cells.
  */
 
 var settings = {
@@ -67,39 +68,43 @@ var World = React.createClass({
 });
 var ViewPort = React.createClass({
     render(){
+        const {viewPortWidth, viewPortHeight, cellSize, worldWidth, worldHeight} = settings;
+        const player = this.props.player;
+        let offset = {};
+        offset.x = (viewPortWidth/2 - player.x * cellSize);
+        offset.x = offset.x > 0 ? 0 : offset.x < (viewPortWidth - worldWidth * cellSize) ?
+            (viewPortWidth - worldWidth * cellSize) : offset.x;
+        offset.y = (viewPortHeight/2 - player.y * cellSize);
+        offset.y = offset.y > 0 ? 0 : offset.y < (viewPortHeight - worldHeight * cellSize) ?
+            (viewPortHeight - worldHeight * cellSize) : offset.y;
+
         let viewPortStyle = {
             position: "relative",
-            width: settings.viewPortWidth,
-            height: settings.viewPortHeight,
+            width: viewPortWidth,
+            height: viewPortHeight,
             overflow: "hidden",
             margin: "auto"
         };
         let worldContainerStyle = {
             position: "absolute",
-            width: settings.worldWidth * settings.cellSize,
-            height: settings.worldHeight * settings.cellSize,
-            left: this.props.offset.x,
-            top: this.props.offset.y
+            width: worldWidth * cellSize,
+            height: worldHeight * cellSize,
+            left: offset.x,
+            top: offset.y
         };
-        let darknessMaskStyle = {
+        let playerPt = {
             position: "absolute",
-            width: settings.viewPortWidth,
-            height: settings.viewPortHeight,
-            fill: "grey"
+            width: worldWidth * cellSize,
+            height: worldHeight * cellSize
         };
         return (
-            <div style={viewPortStyle}>
-                <div style={worldContainerStyle}>
+            <div id="viewPort" style={viewPortStyle}>
+                <div id="worldContainer" style={worldContainerStyle}>
                     {this.props.children}
+                    <svg id="playerPt" style={playerPt} version="1.1" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx={player.x * cellSize} cy={player.y * cellSize} r="20" fill="yellow" />
+                    </svg>
                 </div>
-                <svg style={darknessMaskStyle} xmlns="http://www.w3.org/2000/svg">
-                    <path d={`M0 0 H ${settings.viewPortWidth} V ${settings.viewPortHeight} H 0 z`}/>
-                    <circle cx="10" cy="10" r="2" fill="red"/>
-                    <circle cx="90" cy="90" r="2" fill="red"/>
-                    <circle cx="90" cy="10" r="2" fill="red"/>
-                    <circle cx="10" cy="90" r="2" fill="red"/>
-
-                </svg>
             </div>
         )
     }
@@ -156,23 +161,12 @@ export default React.createClass({
         });
         return (
             <div>
-                <ViewPort offset={this.getOffset()}>
+                <ViewPort player={this.state.player}>
                     <World level={this.state.level} cellArray={this.state.world}/>
                     {entityElements}
                 </ViewPort>
             </div>
         )
-    },
-    getOffset(){
-        const {viewPortWidth, viewPortHeight, cellSize, worldWidth, worldHeight} = settings;
-        let offset = {};
-        offset.x = (viewPortWidth/2 - this.state.player.x * cellSize);
-        offset.x = offset.x > 0 ? 0 : offset.x < (viewPortWidth - worldWidth * cellSize) ? 
-            (viewPortWidth - worldWidth * cellSize) : offset.x;
-        offset.y = (viewPortHeight/2 - this.state.player.y * cellSize);
-        offset.y = offset.y > 0 ? 0 : offset.y < (viewPortHeight - worldHeight * cellSize) ?
-            (viewPortHeight - worldHeight * cellSize) : offset.y;
-        return offset;
     },
     setStartingPositions(){
         let self = this;
