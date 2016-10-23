@@ -63,7 +63,7 @@ var World = React.createClass({
                 cells.push(<div key={x + '-' + y} style={cellStyle}></div>)
             }
         }
-        return <div id="world">{cells}</div>
+        return <div style={{position: "relative"}} id="world">{cells}</div>
     }
 });
 var ViewPort = React.createClass({
@@ -82,7 +82,7 @@ var ViewPort = React.createClass({
             position: "relative",
             width: viewPortWidth,
             height: viewPortHeight,
-            overflow: "hidden",
+            //overflow: "hidden",
             margin: "auto"
         };
         let worldContainerStyle = {
@@ -95,28 +95,32 @@ var ViewPort = React.createClass({
         let darkness = {
             position: "absolute",
             width: worldWidth * cellSize,
-            height: worldHeight * cellSize
+            height: worldHeight * cellSize,
+            mask: "url(#lightMask)",
+            opacity: 0.8
         };
         return (
             <div id="viewPort" style={viewPortStyle}>
                 <div id="worldContainer" style={worldContainerStyle}>
+                    {/*<div style={{position: "relative"}}><div style={{position: "absolute", width: 1000, height: 1000, left: 0, top: 0, backgroundColor: "yellow"}}></div></div>*/}
                     {this.props.children}
                     <svg style={darkness}>
                         <defs>
-                            <clipPath id="light" version="1.1" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx={player.x * cellSize} cy={player.y * cellSize} r="150" />
-                            </clipPath>
+                            <mask id="lightMask">
+                                <rect x="0" y="0" width="1000" height="1000" style={{stroke: "none", fill: "white"}}/>
+                                <circle cx={player.x * cellSize} cy={player.y * cellSize} r="100" style={{stroke: "none", fill: "black"}}/>
+                            </mask>
                         </defs>
-                        <rect id="darkness" x="0" y="0" width={worldWidth * cellSize} height={worldHeight * cellSize} fill="grey" clipPath="url(#light)" />
+                        <rect style={darkness}/>
                     </svg>
+
+
                 </div>
+
             </div>
         )
     }
 });
-
-
-
 // This is the container component with all the state and logic.
 export default React.createClass({
     getInitialState(){
