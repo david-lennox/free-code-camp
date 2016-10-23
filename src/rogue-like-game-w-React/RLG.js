@@ -92,7 +92,7 @@ var ViewPort = React.createClass({
             left: offset.x,
             top: offset.y
         };
-        let playerPt = {
+        let darkness = {
             position: "absolute",
             width: worldWidth * cellSize,
             height: worldHeight * cellSize
@@ -101,8 +101,13 @@ var ViewPort = React.createClass({
             <div id="viewPort" style={viewPortStyle}>
                 <div id="worldContainer" style={worldContainerStyle}>
                     {this.props.children}
-                    <svg id="playerPt" style={playerPt} version="1.1" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx={player.x * cellSize} cy={player.y * cellSize} r="20" fill="yellow" />
+                    <svg style={darkness}>
+                        <defs>
+                            <clipPath id="light" version="1.1" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx={player.x * cellSize} cy={player.y * cellSize} r="150" />
+                            </clipPath>
+                        </defs>
+                        <rect id="darkness" x="0" y="0" width={worldWidth * cellSize} height={worldHeight * cellSize} fill="grey" clipPath="url(#light)" />
                     </svg>
                 </div>
             </div>
