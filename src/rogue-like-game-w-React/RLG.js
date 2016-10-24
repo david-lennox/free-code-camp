@@ -1,12 +1,16 @@
 import React from 'react';
 import graphlib from 'graphlib';
+import '../../node_modules/animate.css/animate.min.css'
 
 /*
-* Todo. Or, make corridors separate from the World and allow movement through corridors but not placement of entities
-*   - this will also speed up render of corridors if doing sequential rendering of each cell.
-* Todo. Change entity creation so old ones remain - currently naming convention means they get replace (I think).
-* Todo. Refactor to have settings.gameWidth in pixels and calculate cell pixel dimension.
-* Todo. Draw svg rectangles for the world rather than div cells.
+* TODO: REMAINING USER STORIES
+*   - You must use Sass
+*   - When I find and beat the boss, I win.
+*   - The game should be challenging, but theoretically winnable.
+* TODO: NICE TO HAVE
+*   - Change entity creation so old ones remain - currently naming convention means they get replace (I think).
+    - Draw svg rectangles for the world rather than div cells. Would make world render much faster.
+*   - Use classnames library to apply classes. This is a React best practice these days I think.
  */
 
 var settings = {
@@ -16,10 +20,16 @@ var settings = {
     minRoomSize: 20, // cells
     maxCorridorLength: 20, // cells
     roomGenerationAttempts: 10000,
-    cellSize: 10, // pixels
+    cellSize: 15, // pixels
     timeBetweenRoomRender: 100,
-    viewPortWidth: 600,
-    viewPortHeight: 400
+    viewPortWidth: 1000,
+    viewPortHeight: 800,
+    appWidth: 1300,
+    levelAttackBonus: 0.2,  // Player attack is 20% stronger for every level advanced.
+    dungeonAttackBonus: 0.3, // enemy attack has a 30% boost for each dungeon.
+    randomizeAttack: attack => attack * (0.6 + 0.3 * Math.random()),
+    xpRequiredPerLevel: 100,
+    xpForKillingEnemy: 20
 };
 
 var Entity = React.createClass({
@@ -69,7 +79,7 @@ var World = React.createClass({
 var ViewPort = React.createClass({
     render(){
         const {viewPortWidth, viewPortHeight, cellSize, worldWidth, worldHeight} = settings;
-        const player = this.props.player;
+        const {player, darkness} = this.props;
         let offset = {};
         offset.x = (viewPortWidth/2 - player.x * cellSize);
         offset.x = offset.x > 0 ? 0 : offset.x < (viewPortWidth - worldWidth * cellSize) ?
@@ -82,8 +92,10 @@ var ViewPort = React.createClass({
             position: "relative",
             width: viewPortWidth,
             height: viewPortHeight,
-            //overflow: "hidden",
-            margin: "auto"
+            overflow: "hidden",
+            margin: "auto",
+            float: "left",
+            border: "2px solid black"
         };
         let worldContainerStyle = {
             position: "absolute",
@@ -92,26 +104,28 @@ var ViewPort = React.createClass({
             left: offset.x,
             top: offset.y
         };
-        let darkness = {
+        let darknessStyle = {
             position: "absolute",
             width: worldWidth * cellSize,
             height: worldHeight * cellSize,
             mask: "url(#lightMask)",
-            opacity: 0.8
+            visibility: darkness ? "visible" : "hidden"
         };
         return (
             <div id="viewPort" style={viewPortStyle}>
                 <div id="worldContainer" style={worldContainerStyle}>
                     {/*<div style={{position: "relative"}}><div style={{position: "absolute", width: 1000, height: 1000, left: 0, top: 0, backgroundColor: "yellow"}}></div></div>*/}
                     {this.props.children}
-                    <svg style={darkness}>
+                    <svg style={darknessStyle}>
                         <defs>
                             <mask id="lightMask">
-                                <rect x="0" y="0" width="1000" height="1000" style={{stroke: "none", fill: "white"}}/>
-                                <circle cx={player.x * cellSize} cy={player.y * cellSize} r="100" style={{stroke: "none", fill: "black"}}/>
+                                <rect x="0" y="0" width={worldWidth * cellSize} height={worldHeight * cellSize} style={{stroke: "none", fill: "white"}}/>
+                                <circle cx={player.x * cellSize} cy={player.y * cellSize} r="250" style={{stroke: "none", fill: "black", opacity: "0.7"}}/>
+                                <circle cx={player.x * cellSize} cy={player.y * cellSize} r="200" style={{stroke: "none", fill: "black", opacity: "0.5"}}/>
+                                <circle cx={player.x * cellSize} cy={player.y * cellSize} r="170" style={{stroke: "none", fill: "black"}}/>
                             </mask>
                         </defs>
-                        <rect style={darkness}/>
+                        <rect style={darknessStyle}/>
                     </svg>
 
 
@@ -127,26 +141,38 @@ export default React.createClass({
         // Keep all game state in this container. All other components will be pure (only properties passed from here).
         return {
             world: [],
-            level: 1,
+            dungeon: 1,
             rooms: {},
             corridors: {},
             player: {
                 x: 0,
                 y: 0,
                 type: 'player',
+                xp: 0,
                 health: 100,
                 attack: 3,
                 weapon: 'fist',
                 name: 'player'
             },
             entityNamesByLoc: {},
-            corridorCells: {}
+            corridorCells: {},
+            darkness: true,
+            messages: []
         }
     },
     componentDidMount(){
-        this.generateLevel();
+        this.generateDungeon();
     },
-    generateLevel(){
+    // This is here to make the flash animation fire every time a new message is added to the state.messages list.
+    // Simply adding 'animate flash' to the message element when created does not work.
+    componentDidUpdate(prevProps, prevState){
+        if(this.state.messages.length !== prevState.messages.length) {
+            let firstMsg = document.getElementById("firstMessage");
+            firstMsg.className = "";
+            setTimeout(() => firstMsg.className = "animated flash", 500);
+        }
+    },
+    generateDungeon(){
         var self = this;
         self.createWorld()
             .then(this.createEntities)
@@ -162,18 +188,51 @@ export default React.createClass({
                 }, true);
             });
     },
-    
     render(){
         let entityElements = Object.keys(this.state).map(e => {
             if(this.state[e].type) return <Entity key={e} entity={this.state[e]}/>;
             else return null;
         });
+        let messages = this.state.messages.map((m, i) => {
+            if(i === 0) return <p key='first' id="firstMessage" className="" style={{color: "red", textDecoration: "underline", fontSize: "16px"}}>{m}</p>
+            else return <p key={i}>{m}</p>
+        });
+
+        let appStyle = {
+            width: settings.appWidth,
+            margin: "auto",
+            height: 900
+        };
+
+        let infoStyle = {
+            float: "left",
+            color: "black",
+            fontSize: 8,
+            marginRight: 10
+        };
+        let infoGroupStyle = {
+            width: settings.viewPortWidth
+        };
         return (
-            <div>
-                <ViewPort player={this.state.player}>
-                    <World level={this.state.level} cellArray={this.state.world}/>
-                    {entityElements}
-                </ViewPort>
+            <div style={appStyle}>
+                <div style={{float: "left"}}>
+                    <div style={infoGroupStyle}>
+                        <button style={{float: "right"}} onClick={() => this.setState({darkness: !this.state.darkness})}>Darkness</button>
+                        <div style={infoStyle}><h3>Health: {this.state.player.health}  |</h3></div>
+                        <div style={infoStyle}><h3>Weapon: {`${this.state.player.weapon} (${this.state.player.attack})`}  |</h3></div>
+                        <div style={infoStyle}><h3>Dungeon: {this.state.dungeon}  |</h3></div>
+                        <div style={infoStyle}><h3>Level: {Math.floor(this.state.player.xp/settings.xpRequiredPerLevel)}  |</h3></div>
+                        <div style={infoStyle}><h3>XP to Next Level: {settings.xpRequiredPerLevel - Math.ceil(this.state.player.xp % settings.xpRequiredPerLevel)}  |</h3></div>
+                    </div>
+                    <ViewPort player={this.state.player} darkness={this.state.darkness}>
+                        <World dungeon={this.state.dungeon} cellArray={this.state.world}/>
+                        {entityElements}
+                    </ViewPort>
+                </div>
+                <div style={{width: 250, margin: "auto", float: "right"}}>
+                    <h3 style={{textAlign: "center"}}>Messages</h3>
+                    {messages}
+                </div>
             </div>
         )
     },
@@ -202,23 +261,38 @@ export default React.createClass({
         return new Promise(resolve => this.setState({entityNamesByLoc: Object.assign(this.state.entityNamesByLoc, allocated)}, () => resolve('state updated')));
     },
 
+    addMessage(msg){
+        console.log(msg);
+        let newMsgArray = this.state.messages.slice();
+        newMsgArray.unshift(msg);
+        this.setState({messages: newMsgArray});
+    },
+
     fight(enemy){
-        var enemyCopy = Object.assign({}, enemy);
-        var playerCopy = Object.assign({}, this.state.player);
-        console.log(`Argghh... you bastard, now I will kill you with my ${playerCopy.weapon}!`);
-        enemyCopy.health -= this.state.player.attack;
-        playerCopy.health -= enemy.attack;
-        console.log(`Lost ${enemy.attack} health. ${playerCopy.health} remaining`);
+        let enemyCopy = Object.assign({}, enemy);
+        let playerCopy = Object.assign({}, this.state.player);
+        let playerLevel = Math.floor(playerCopy.xp/settings.xpRequiredPerLevel);
+        this.addMessage(`Attacking the bad guy with my ${playerCopy.weapon}!`);
+        let damageToPlayer = Math.round(settings.randomizeAttack(playerCopy.attack * (1 + this.state.dungeon * settings.dungeonAttackBonus)));
+        let damageToEnemy = Math.round(settings.randomizeAttack(playerCopy.attack * (1 + playerLevel * settings.levelAttackBonus)));
+        enemyCopy.health -= damageToEnemy;
+        playerCopy.health -= damageToPlayer;
+        console.log(`Lost ${damageToPlayer} health. ${playerCopy.health} remaining`);
+        console.log(`Inflicted ${damageToEnemy} damage on the enemy! They have ${enemy.health} health remaining.`);
         if(playerCopy.health < 1) this.gameOver();  // Player is dead.
         else if(enemyCopy.health < 1) {
             playerCopy.x = enemy.x;
             playerCopy.y = enemy.y;
+            playerCopy.xp += settings.xpForKillingEnemy;
         }
-        // Todo: Consider putting all entities inside an entitiesByName object.
+
         this.setState({
             [enemy.name]: enemyCopy,
             player: playerCopy
         });
+    },
+    gameOver(){
+        alert("You got killed. Next time try getting the weapons and health-packs before going into battle.");
     },
     move(arrowKey){
         let playerCopy = Object.assign({}, this.state.player);
@@ -251,14 +325,42 @@ export default React.createClass({
                         this.collect(occupier); // will also move the player
                         break;
                     case 'portal':
-                        this.nextLevel(); // reloads the world.
+                        this.nextDungeon(); // reloads the world.
                         break;
                     default:
                         break;
                 }
             }
             else this.setState({player: playerCopy});
+            this.lookAround(playerCopy.x, playerCopy.y);
         }
+    },
+    lookAround(x, y){
+        let AdjacentCellKeys = [(x + 1) + '-' + y, (x - 1) + '-' + y, x + '-' + (y - 1), x + '-' + (y + 1)];
+        Object.keys(this.state.entityNamesByLoc).forEach(loc => {
+            if(AdjacentCellKeys.includes(loc)) {
+                let e = this.state[this.state.entityNamesByLoc[loc]];
+                if (e.health > 0) {
+                    switch (e.type) {
+                        case "weapon":
+                            this.addMessage(`Adjacent object is a weapon: ${e.weapon}, attack value: ${e.attack}`);
+                            break;
+                        case "health":
+                            this.addMessage(`Adjacent object is a health pack: ${e.health}`);
+                            break;
+                        case "enemy":
+                            if (e.health > 0) this.addMessage(`Oh crap! The adjacent object is an enemy: attack: ${e.attack}, health: ${e.health}`);
+                            break;
+                        case "portal":
+                            if (e.health > 0) this.addMessage(`The adjacent object is a Portal, it will take you to the next dungeon.`);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+            }
+        });
     },
     collect(entity){
         let playerCopy = Object.assign({}, this.state.player, {
@@ -272,13 +374,13 @@ export default React.createClass({
             health: 0,
             attack: 0
         });
-        if(entity.type === 'health') console.log(`Ahhhh... that's better. Health + ${entity.health}`);
-        if(entity.type === 'weapon') console.log(`Cool man!! A ${entity.weapon}`);
+        if(entity.type === 'health') this.addMessage(`Health + ${entity.health}`);
+        if(entity.type === 'weapon') this.addMessage(`Cool man!! A ${entity.weapon}`);
         this.setState({player: playerCopy, [entity.name]: entityCopy})
     },
-    nextLevel(){
-        // Todo - preserve the old world & record which entities belong to which level.
-        // Kill all currently living entities on the current level.
+    nextDungeon(){
+        // Todo - preserve the old world & record which entities belong to which dungeon.
+        // Kill all currently living entities on the current dungeon.
         let deadEntities = {};
         for(let e in this.state){
             if(this.state.hasOwnProperty(e)){
@@ -287,25 +389,25 @@ export default React.createClass({
                 }
             }
         }
-        let newLevel = this.state.level + 1;
-        this.setState({underConstruction: true, entityNamesByLoc: {}, world: [], ...deadEntities, level: newLevel}, () => this.generateLevel());
+        let newDungeon = this.state.dungeon + 1;
+        this.setState({underConstruction: true, entityNamesByLoc: {}, world: [], ...deadEntities, dungeon: newDungeon}, () => this.generateDungeon());
     },
 
     createEntities(){
         var self = this;
         return new Promise((resolve, reject) => {
             var newEntities = {};
-            const level = this.state.level;
+            const dungeon = this.state.dungeon;
             let healthpacks, enemies, portals;
-            switch(level){
+            switch(dungeon){
                 case 1:
-                    [healthpacks, enemies, portals] = [1, 1, 1]; // todo: change portals back to 1.
+                    [healthpacks, enemies, portals] = [6, 10, 1]; // todo: change portals back to 1.
                     break;
                 case 2:
                     [healthpacks, enemies, portals] = [4, 5, 1];
                     break;
                 case 3:
-                    [healthpacks, enemies, portals] = [6, 9, 2];
+                    [healthpacks, enemies, portals] = [6, 9, 1];
                     break;
                 case 4:
                     [healthpacks, enemies, portals] = [7, 15, 0];
@@ -314,7 +416,7 @@ export default React.createClass({
                     break;
             }
             var weaponList = [['knife', 5], ['sword', 8], ['bow', 12], ['pistol', 16], ['rifle', 20], ['assault rifle', 30],
-                ['bazooka', 40], ['grenade-launcher', 60]]; // 2 per level (4 levels)
+                ['bazooka', 40], ['grenade-launcher', 60]]; // 2 per dungeon (4 dungeons)
             for(let i = 0; i < healthpacks; i++){
                 let name = 'health-' + i;
                 newEntities[name] = {
@@ -323,7 +425,7 @@ export default React.createClass({
                     attack: 0,
                     health: 20,
                     type: 'health',
-                    level: level
+                    dungeon: dungeon
                 };
             }
             for(let i = 0; i < enemies; i++){
@@ -334,19 +436,19 @@ export default React.createClass({
                     attack: 5,
                     health: 20,
                     type: 'enemy',
-                    level: level
+                    dungeon: dungeon
                 };
             }
-            for(let i = 0; i < 2; i++){ // Two weapons per level only - this is not a good design.
+            for(let i = 0; i < 2; i++){ // Two weapons per dungeon only - this is not a good design.
                 let name = 'weapon-' + i;
                 newEntities[name] = {
                     x: 0, y: 0,
                     name: name,
-                    attack: weaponList[(level - 1)*2 + i][1],
+                    attack: weaponList[(dungeon - 1)*2 + i][1],
                     health: 1,
                     type: 'weapon',
-                    level: level,
-                    weapon: weaponList[(level - 1)*2 + i][0]
+                    dungeon: dungeon,
+                    weapon: weaponList[(dungeon - 1)*2 + i][0]
                 };
             }
             for(let i = 0; i < portals; i++){
@@ -357,7 +459,7 @@ export default React.createClass({
                     attack: 0,
                     health: 1,
                     type: 'portal',
-                    level: level
+                    dungeon: dungeon
                 };
             }
             self.setState({...newEntities}, () => resolve('state updated'))

@@ -8,6 +8,7 @@
     "react-scripts": "0.4.3"
   },
   "dependencies": {
+    "animate.css": "^3.5.2",
     "bootstrap": "^3.3.7",
     "classnames": "^2.2.5",
     "d3": "^4.2.7",
