@@ -1,12 +1,14 @@
 import React from 'react';
 import graphlib from 'graphlib';
 import '../../node_modules/animate.css/animate.min.css'
+import CSSTransitionGroup from 'react-addons-css-transition-group';
 
 /*
 * TODO: REMAINING USER STORIES
 *   - You must use Sass
 *   - When I find and beat the boss, I win.
 *   - The game should be challenging, but theoretically winnable.
+*       -- todo. Run test on the settings object to confirm win is possible.
 * TODO: NICE TO HAVE
 *   - Change entity creation so old ones remain - currently naming convention means they get replace (I think).
     - Draw svg rectangles for the world rather than div cells. Would make world render much faster.
@@ -29,7 +31,36 @@ var settings = {
     dungeonAttackBonus: 0.3, // enemy attack has a 30% boost for each dungeon.
     randomizeAttack: attack => attack * (0.6 + 0.3 * Math.random()),
     xpRequiredPerLevel: 100,
-    xpForKillingEnemy: 20
+    xpForKillingEnemy: 20,
+    healthPackValue: 10,
+    dungeon1: {
+        enemies: 10,
+        maxEnemyAtk: 10,
+        enemyHealth: 20,
+        weapons: [['knife', 5], ['sword', 8]],
+        healthPacks: 5
+    },
+    dungeon2: {
+        enemy: 15,
+        maxEnemyAtk: 20,
+        enemyHealth: 40,
+        weapons: [['bow', 12], ['pistol', 16]],
+        healthPacks: 5
+    },
+    dungeon3: {
+        enemy: 20,
+        maxEnemyAtk: 30,
+        enemyHealth: 60,
+        weapons: [['rifle', 20], ['assault rifle', 30]],
+        healthPacks: 10
+    },
+    dungeon4: {
+        enemy: 30,
+        maxEnemyAtk: 40,
+        enemyHealth: 80,
+        weapons: [['bazooka', 40], ['grenade-launcher', 60]],
+        healthPacks: 20
+    }
 };
 
 var Entity = React.createClass({
@@ -163,15 +194,6 @@ export default React.createClass({
     componentDidMount(){
         this.generateDungeon();
     },
-    // This is here to make the flash animation fire every time a new message is added to the state.messages list.
-    // Simply adding 'animate flash' to the message element when created does not work.
-    componentDidUpdate(prevProps, prevState){
-        if(this.state.messages.length !== prevState.messages.length) {
-            let firstMsg = document.getElementById("firstMessage");
-            firstMsg.className = "";
-            setTimeout(() => firstMsg.className = "animated flash", 500);
-        }
-    },
     generateDungeon(){
         var self = this;
         self.createWorld()
@@ -194,7 +216,7 @@ export default React.createClass({
             else return null;
         });
         let messages = this.state.messages.map((m, i) => {
-            if(i === 0) return <p key='first' id="firstMessage" className="" style={{color: "red", textDecoration: "underline", fontSize: "16px"}}>{m}</p>
+            if(i === this.state.messages.length - 1) return <p key={i} id="firstMessage" className="" style={{color: "red", textDecoration: "underline", fontSize: "16px"}}>{m}</p>
             else return <p key={i}>{m}</p>
         });
 
@@ -231,7 +253,14 @@ export default React.createClass({
                 </div>
                 <div style={{width: 250, margin: "auto", float: "right"}}>
                     <h3 style={{textAlign: "center"}}>Messages</h3>
-                    {messages}
+                    <CSSTransitionGroup transitionName={{
+                        enter: "animated",
+                        enterActive: "rubberBand",
+                        leave: "animated",
+                        leaveActive: "fadeOutRight"
+                    }}>
+                        {messages.reverse()}
+                    </CSSTransitionGroup>
                 </div>
             </div>
         )
@@ -264,7 +293,7 @@ export default React.createClass({
     addMessage(msg){
         console.log(msg);
         let newMsgArray = this.state.messages.slice();
-        newMsgArray.unshift(msg);
+        newMsgArray.push(msg);
         this.setState({messages: newMsgArray});
     },
 
@@ -395,73 +424,52 @@ export default React.createClass({
 
     createEntities(){
         var self = this;
+        const dungeonSettings = settings['dungeon' + self.state.dungeon];
+        var newEntities = {};
+        let {enemies, maxEnemyAtk, enemyHealth, weapons, healthPacks, healthPackValue} = dungeonSettings;
+        for(let i = 0; i < healthPacks; i++){
+            let name = 'health-' + i;
+            newEntities[name] = {
+                x: 0, y: 0,
+                name: name,
+                attack: 0,
+                health: healthPackValue,
+                type: 'health',
+                dungeon: this.state.dungeon
+            };
+        }
+        for(let i = 0; i < enemies; i++){
+            let name = 'enemy-' + i;
+            newEntities[name] = {
+                x: 0, y: 0,
+                name: name,
+                attack: maxEnemyAtk,
+                health: enemyHealth,
+                type: 'enemy',
+                dungeon: this.state.dungeon
+            };
+        }
+        for(let i = 0; i < weapons.length; i++){
+            let name = 'weapon-' + i;
+            newEntities[name] = {
+                x: 0, y: 0,
+                name: name,
+                attack: weapons[i][1],
+                health: 1,
+                type: 'weapon',
+                dungeon: this.state.dungeon,
+                weapon: weapons[i][0]
+            };
+        }
+        newEntities['portal'] = {
+            x: 0, y: 0,
+            name: 'portal',
+            attack: 0,
+            health: 1,
+            type: 'portal',
+            dungeon: this.state.dungeon
+        };
         return new Promise((resolve, reject) => {
-            var newEntities = {};
-            const dungeon = this.state.dungeon;
-            let healthpacks, enemies, portals;
-            switch(dungeon){
-                case 1:
-                    [healthpacks, enemies, portals] = [6, 10, 1]; // todo: change portals back to 1.
-                    break;
-                case 2:
-                    [healthpacks, enemies, portals] = [4, 5, 1];
-                    break;
-                case 3:
-                    [healthpacks, enemies, portals] = [6, 9, 1];
-                    break;
-                case 4:
-                    [healthpacks, enemies, portals] = [7, 15, 0];
-                    break;
-                default:
-                    break;
-            }
-            var weaponList = [['knife', 5], ['sword', 8], ['bow', 12], ['pistol', 16], ['rifle', 20], ['assault rifle', 30],
-                ['bazooka', 40], ['grenade-launcher', 60]]; // 2 per dungeon (4 dungeons)
-            for(let i = 0; i < healthpacks; i++){
-                let name = 'health-' + i;
-                newEntities[name] = {
-                    x: 0, y: 0,
-                    name: name,
-                    attack: 0,
-                    health: 20,
-                    type: 'health',
-                    dungeon: dungeon
-                };
-            }
-            for(let i = 0; i < enemies; i++){
-                let name = 'enemy-' + i;
-                newEntities[name] = {
-                    x: 0, y: 0,
-                    name: name,
-                    attack: 5,
-                    health: 20,
-                    type: 'enemy',
-                    dungeon: dungeon
-                };
-            }
-            for(let i = 0; i < 2; i++){ // Two weapons per dungeon only - this is not a good design.
-                let name = 'weapon-' + i;
-                newEntities[name] = {
-                    x: 0, y: 0,
-                    name: name,
-                    attack: weaponList[(dungeon - 1)*2 + i][1],
-                    health: 1,
-                    type: 'weapon',
-                    dungeon: dungeon,
-                    weapon: weaponList[(dungeon - 1)*2 + i][0]
-                };
-            }
-            for(let i = 0; i < portals; i++){
-                let name = 'portal-' + i;
-                newEntities[name] = {
-                    x: 0, y: 0,
-                    name: name,
-                    attack: 0,
-                    health: 1,
-                    type: 'portal',
-                    dungeon: dungeon
-                };
-            }
             self.setState({...newEntities}, () => resolve('state updated'))
         });
     },
@@ -477,7 +485,6 @@ export default React.createClass({
         return new Promise(resolve => self.setState({world: newWorld}, () => resolve('state updated')));
     },
     createRooms(){
-
         let self = this;
         let rooms = {};
         let worldCopy = self.state.world.map(arr => arr.slice()); // make a copy not a reference.
