@@ -8,7 +8,8 @@ import CSSTransitionGroup from 'react-addons-css-transition-group';
 *   - You must use Sass
 *   - When I find and beat the boss, I win.
 *   - The game should be challenging, but theoretically winnable.
-*       -- todo. Run test on the settings object to confirm win is possible.
+*       -- todo. implement testWinable function that simulates some number of random game plays that collect all health
+*       and weapons and then go around killing a specifed number of enemy in each dungeon.
 * TODO: NICE TO HAVE
 *   - Change entity creation so old ones remain - currently naming convention means they get replace (I think).
     - Draw svg rectangles for the world rather than div cells. Would make world render much faster.
@@ -32,34 +33,42 @@ var settings = {
     randomizeAttack: attack => attack * (0.6 + 0.3 * Math.random()),
     xpRequiredPerLevel: 100,
     xpForKillingEnemy: 20,
-    healthPackValue: 10,
+    // let {enemies, maxEnemyAtk, enemyHealth, weapons, healthPacks, healthPackValue} = dungeonSettings;
     dungeon1: {
         enemies: 10,
         maxEnemyAtk: 10,
         enemyHealth: 20,
         weapons: [['knife', 5], ['sword', 8]],
-        healthPacks: 5
+        healthPacks: 5,
+        healthPackValue: 10,
     },
     dungeon2: {
-        enemy: 15,
+        enemies: 15,
         maxEnemyAtk: 20,
         enemyHealth: 40,
         weapons: [['bow', 12], ['pistol', 16]],
-        healthPacks: 5
+        healthPacks: 5,
+        healthPackValue: 10,
     },
     dungeon3: {
-        enemy: 20,
+        enemies: 20,
         maxEnemyAtk: 30,
         enemyHealth: 60,
         weapons: [['rifle', 20], ['assault rifle', 30]],
-        healthPacks: 10
+        healthPacks: 10,
+        healthPackValue: 10,
     },
     dungeon4: {
-        enemy: 30,
+        enemies: 30,
         maxEnemyAtk: 40,
         enemyHealth: 80,
         weapons: [['bazooka', 40], ['grenade-launcher', 60]],
-        healthPacks: 20
+        healthPacks: 20,
+        healthPackValue: 10,
+    },
+    boss: {
+        attack: 100,
+        health: 1000
     }
 };
 
@@ -68,10 +77,10 @@ var Entity = React.createClass({
         let e = this.props.entity;
         let eStyle = {
             visibility: e.health > 0 ? 'visible' : 'hidden',
-            width: settings.cellSize,
-            height: settings.cellSize,
+            width: settings.cellSize * (e.size ? e.size : 1),
+            height: settings.cellSize * (e.size ? e.size : 1),
             position: 'absolute',
-            left: e.x * settings.cellSize,
+            left: e.x * settings.cellSize ,
             top: e.y * settings.cellSize,
             backgroundColor: e.type === 'player' ? 'blue'
                 : e.type === 'enemy' ? 'red'
@@ -166,13 +175,35 @@ var ViewPort = React.createClass({
         )
     }
 });
+var GameOver = React.createClass({
+
+    render(){
+        var gameOverStyle = {
+            visibility: this.props.over ? 'visible' : 'hidden',
+            position: 'fixed',
+            backgroundColor: 'red',
+            color: 'white',
+            width: 700,
+            height: 400,
+            border: '1pt solid orange',
+            padding: 20,
+            margin: "auto",
+            top: "50%",
+            left: "50%",
+            marginTop:  -100, /* Negative half of height. */
+            marginLeft:  -200, /* Negative half of width. */
+        };
+        return <div style={gameOverStyle}><h1>Game Over Sucker!</h1><p>Next time try collecting the health packs and weapons before going into battle!</p></div>
+    }
+});
 // This is the container component with all the state and logic.
 export default React.createClass({
     getInitialState(){
         // Keep all game state in this container. All other components will be pure (only properties passed from here).
         return {
+            gameOver: false,
             world: [],
-            dungeon: 1,
+            dungeon: 4,
             rooms: {},
             corridors: {},
             player: {
@@ -191,7 +222,8 @@ export default React.createClass({
             messages: []
         }
     },
-    componentDidMount(){
+    componentDidMount(prevProps, prevState){
+        debugger;
         this.generateDungeon();
     },
     generateDungeon(){
@@ -262,32 +294,43 @@ export default React.createClass({
                         {messages.reverse()}
                     </CSSTransitionGroup>
                 </div>
+                <GameOver over={this.state.gameOver}/>
             </div>
         )
     },
     setStartingPositions(){
         let self = this;
-        let entityNames = Object.keys(this.state).filter(eName =>
-            typeof(this.state[eName].type) === 'string' && this.state[eName].health > 0);
+        let entityNames = Object.keys(self.state).filter(eName =>
+            typeof(self.state[eName].type) === 'string' && self.state[eName].health > 0);
         let allocated = {}; // Need this because setState runs async.
         entityNames.forEach(eName => {
             let vacant = false;
             let counter = 0;
             while (vacant === false && counter < 1000) {
                 counter++;
-                let x = Math.round(Math.random() * (this.state.world.length - 1));
-                let y = Math.round(Math.random() * (this.state.world[0].length - 1));
-                if (this.state.world[x][y] === 1
-                    && !this.state.entityNamesByLoc[x + '-' + y]
-                    && !allocated[x + '-' + y]
-                    && !this.state.corridorCells.includes(x + '-' + y)) {
+                let x = Math.round(Math.random() * (self.state.world.length - 1));
+                let y = Math.round(Math.random() * (self.state.world[0].length - 1));
+                let pts = [];
+                if(self.state[eName].name === 'boss') pts = [[x,y], [x + 1, y], [x, y + 1], [x+1, y+1]];
+                else pts = [[x,y]];
+                if (pts.every(isVacant)) {
                     vacant = true;
-                    self.setState({[eName]: Object.assign(this.state[eName], {x: x, y: y})});
-                    if(eName !== 'player') allocated[x + '-' + y] = eName;
+                    self.setState({[eName]: Object.assign(self.state[eName], {x: x, y: y})});
+                    if(eName !== 'player') pts.forEach(([x, y]) => {
+                        allocated[x + '-' + y] = eName;
+                        console.log(`Allocated ${eName} to x: ${x}, y: ${y}.`);
+                    });
                 }
             }
         });
-        return new Promise(resolve => this.setState({entityNamesByLoc: Object.assign(this.state.entityNamesByLoc, allocated)}, () => resolve('state updated')));
+        return new Promise(resolve => self.setState({entityNamesByLoc: Object.assign(self.state.entityNamesByLoc, allocated)}, () => resolve('state updated')));
+
+        function isVacant([x, y]){ // expects a two item array. And will assign x and y to those items (ES6).
+            return self.state.world[x][y] === 1
+            && !self.state.entityNamesByLoc[x + '-' + y]
+            && !allocated[x + '-' + y]
+            && !self.state.corridorCells.includes(x + '-' + y)
+        }
     },
 
     addMessage(msg){
@@ -321,10 +364,12 @@ export default React.createClass({
         });
     },
     gameOver(){
-        alert("You got killed. Next time try getting the weapons and health-packs before going into battle.");
+        this.setState({gameOver: true})
     },
     move(arrowKey){
+        if (this.state.gameOver) return;
         let playerCopy = Object.assign({}, this.state.player);
+        console.log(playerCopy.x + '-' + playerCopy.y);
         switch (arrowKey) {
             case 'ArrowUp':
                 playerCopy.y -= 1;
@@ -378,7 +423,8 @@ export default React.createClass({
                             this.addMessage(`Adjacent object is a health pack: ${e.health}`);
                             break;
                         case "enemy":
-                            if (e.health > 0) this.addMessage(`Oh crap! The adjacent object is an enemy: attack: ${e.attack}, health: ${e.health}`);
+                            if (e.name === 'boss') this.addMessage(`Holy Mary Mother of Zeus!! It's the big Boss!! Attack: ${e.attack}, health: ${e.health}`)
+                            else if (e.health > 0) this.addMessage(`The adjacent object is an enemy: attack: ${e.attack}, health: ${e.health}. Time to open a can of whoopass!!`);
                             break;
                         case "portal":
                             if (e.health > 0) this.addMessage(`The adjacent object is a Portal, it will take you to the next dungeon.`);
@@ -469,6 +515,16 @@ export default React.createClass({
             type: 'portal',
             dungeon: this.state.dungeon
         };
+        if(this.state.dungeon === 4){
+            newEntities['boss'] = {
+                x:0, y: 0,
+                name: 'boss',
+                attack: settings.boss.attack,
+                health: settings.boss.health,
+                type: 'enemy',
+                size: 2
+            }
+        }
         return new Promise((resolve, reject) => {
             self.setState({...newEntities}, () => resolve('state updated'))
         });
@@ -603,14 +659,6 @@ export default React.createClass({
         }
     }
 });
-
-
-
-
-
-
-
-
 
 
 
