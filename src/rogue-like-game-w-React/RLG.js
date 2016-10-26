@@ -209,9 +209,10 @@ var GameOver = React.createClass({
 // This is the container component with all the state and logic.
 export default React.createClass({
     getInitialState(){
+        console.log("Get Initial State called");
         // Keep all game state in this container. All other components will be pure (only properties passed from here).
         return {
-            gameStatus: "underConstruction", // is either underConstruction, playing, or over,
+            gameStatus: "noGame", // is either noGame, underConstruction, playing, or over,
             world: [],
             dungeon: 4,
             rooms: {},
@@ -224,19 +225,15 @@ export default React.createClass({
             messages: []
         }
     },
-    componentDidMount(prevProps, prevState){
-        this.generateDungeon();
+    componentDidMount(){
+        console.log("component did mount.")
     },
     componentWillUnmount(){
-        var node = document.getElementById("RLG");
-        if (node.parentNode) {
-            node.parentNode.removeChild(node);
-        }
-        console.log("component should be gone gone gone!!!");
+        console.log("component Will unmount - but who knows if it really did?");
     },
     generateDungeon(){
         var self = this;
-        self.createWorld()
+        var lastPromise = self.createWorld()
             .then(this.createEntities)
             .then(self.createRooms)
             .then(self.createCorridors)
@@ -249,9 +246,8 @@ export default React.createClass({
                     // Consume the event to avoid it being handled twice
                     event.preventDefault();
                 }, true);
-            }).then(() => {
-                console.log("The final then statement so all promises must be resolved.");
             });
+        console.log("last promise created");
     },
     render(){
         let entityElements = Object.keys(this.state.entities).map(e => {
@@ -285,7 +281,7 @@ export default React.createClass({
             width: "100%",
             height: "100%",
             backgroundColor: "blue",
-            visibility: this.state.gameStatus === 'underConstruction' ? 'visible' : 'hidden'
+            visibility: this.state.gameStatus === "playing" ? "hidden" : "visible"
         };
         let animationTimeout = 1500;
         return (
@@ -314,7 +310,11 @@ export default React.createClass({
                         {messages.reverse()}
                     </CSSTransitionGroup>
                 </div>
-                <div id="spinner" style={spinnerStyle}><i className="fa fa-spinner" /></div>
+                <div style={spinnerStyle} id="spinner">
+                    <i style={{visibility: this.state.gameStatus === 'underConstruction' ? 'visible' : 'hidden'}} className="fa fa-spinner" />
+                    <button style={{visibility: this.state.gameStatus === 'noGame' ? 'visible' : 'hidden', position: "absolute", top: 100, left: 100}}
+                            onClick={this.generateDungeon}>Create New Game</button>
+                </div>
             </div>
         )
     },
@@ -339,7 +339,7 @@ export default React.createClass({
                     //self.setState({entities: Object.assign({}, self.state.entities[eName], {x: x, y: y})});
                     pts.forEach(([x, y]) => {
                         allocated[x + '-' + y] = eName;
-                        console.log(`Allocated ${eName} to x: ${x}, y: ${y}.`);
+                        //console.log(`Allocated ${eName} to x: ${x}, y: ${y}.`);
                     });
                 }
             }
