@@ -25,7 +25,7 @@ var RLGSettings = {
     maxCorridorLength: 20, // cells
     roomGenerationAttempts: 10000,
     cellSize: 15, // pixels
-    timeBetweenRoomRender: 100,
+    timeBetweenRoomRender: 0,
     viewPortWidth: 1000,
     viewPortHeight: 800,
     appWidth: 1300,
@@ -228,7 +228,11 @@ export default React.createClass({
         this.generateDungeon();
     },
     componentWillUnmount(){
-        console.log("component will unmount called!");
+        var node = document.getElementById("RLG");
+        if (node.parentNode) {
+            node.parentNode.removeChild(node);
+        }
+        console.log("component should be gone gone gone!!!");
     },
     generateDungeon(){
         var self = this;
@@ -245,6 +249,8 @@ export default React.createClass({
                     // Consume the event to avoid it being handled twice
                     event.preventDefault();
                 }, true);
+            }).then(() => {
+                console.log("The final then statement so all promises must be resolved.");
             });
     },
     render(){
@@ -283,7 +289,7 @@ export default React.createClass({
         };
         let animationTimeout = 1500;
         return (
-            <div style={appStyle}>
+            <div id="RLG" style={appStyle}>
                 <div style={{float: "left"}}>
                     <div style={infoGroupStyle}>
                         <button style={{float: "right"}} onClick={() => this.setState({darkness: !this.state.darkness})}>Darkness</button>
