@@ -410,7 +410,12 @@ export default React.createClass({
                 }
             }
             else this.setState({player: playerCopy});
-            this.lookAround(playerCopy.x, playerCopy.y);
+            setTimeout(() => {
+                if(playerCopy.x === this.state.player.x && playerCopy.y === this.state.player.y){
+                    this.lookAround(playerCopy.x, playerCopy.y);
+                }
+            }, 500);
+
         }
     },
     lookAround(x, y){
