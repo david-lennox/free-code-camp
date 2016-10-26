@@ -2,6 +2,7 @@ import React from 'react';
 import graphlib from 'graphlib';
 import '../../node_modules/animate.css/animate.min.css'
 import CSSTransitionGroup from 'react-addons-css-transition-group';
+import Modal from 'react-modal';
 
 /*
 * TODO: REMAINING USER STORIES
@@ -16,7 +17,7 @@ import CSSTransitionGroup from 'react-addons-css-transition-group';
 *   - Use classnames library to apply classes. This is a React best practice these days I think.
  */
 
-var settings = {
+var RLGSettings = {
     worldWidth: 100,  // cells
     worldHeight: 100, // cells
     maxRoomSize: 40, // cells
@@ -87,11 +88,11 @@ var Entity = React.createClass({
         let e = this.props.entity;
         let eStyle = {
             visibility: e.health > 0 ? 'visible' : 'hidden',
-            width: settings.cellSize * (e.size ? e.size : 1),
-            height: settings.cellSize * (e.size ? e.size : 1),
+            width: RLGSettings.cellSize * (e.size ? e.size : 1),
+            height: RLGSettings.cellSize * (e.size ? e.size : 1),
             position: 'absolute',
-            left: e.x * settings.cellSize ,
-            top: e.y * settings.cellSize,
+            left: e.x * RLGSettings.cellSize ,
+            top: e.y * RLGSettings.cellSize,
             backgroundColor: e.type === 'player' ? 'blue'
                 : e.type === 'enemy' ? 'red'
                 : e.type === 'health' ? 'green'
@@ -113,11 +114,11 @@ var World = React.createClass({
         for(let x = 0; x < cellArray.length; x++){
             for(let y = 0; y < cellArray[x].length; y++){
                 let cellStyle = {
-                    width: settings.cellSize,
-                    height: settings.cellSize,
+                    width: RLGSettings.cellSize,
+                    height: RLGSettings.cellSize,
                     position: 'absolute',
-                    left: x * settings.cellSize,
-                    top: y * settings.cellSize,
+                    left: x * RLGSettings.cellSize,
+                    top: y * RLGSettings.cellSize,
                     backgroundColor: cellArray[x][y] === 1 ? 'white' : 'brown'
                 };
                 cells.push(<div key={x + '-' + y} style={cellStyle}></div>)
@@ -128,7 +129,7 @@ var World = React.createClass({
 });
 var ViewPort = React.createClass({
     render(){
-        const {viewPortWidth, viewPortHeight, cellSize, worldWidth, worldHeight} = settings;
+        const {viewPortWidth, viewPortHeight, cellSize, worldWidth, worldHeight} = RLGSettings;
         const {player, darkness} = this.props;
         let offset = {};
         offset.x = (viewPortWidth/2 - player.x * cellSize);
@@ -185,38 +186,38 @@ var ViewPort = React.createClass({
         )
     }
 });
-//var GameOver = React.createClass({
-//    render(){
-//        var gameOverStyle = {
-//            visibility: this.props.over ? 'visible' : 'hidden',
-//            position: 'fixed',
-//            backgroundColor: 'red',
-//            color: 'white',
-//            width: 700,
-//            height: 400,
-//            border: '1pt solid orange',
-//            padding: 20,
-//            margin: "auto",
-//            top: "50%",
-//            left: "50%",
-//            marginTop:  -100, /* Negative half of height. */
-//            marginLeft:  -200, /* Negative half of width. */
-//        };
-//        return <div style={gameOverStyle}><h1>Game Over Sucker!</h1><p>Next time try collecting the health packs and weapons before going into battle!</p></div>
-//    }
-//});
+var GameOver = React.createClass({
+   render(){
+       var gameOverStyle = {
+           visibility: this.props.over ? 'visible' : 'hidden',
+           position: 'fixed',
+           backgroundColor: 'red',
+           color: 'white',
+           width: 700,
+           height: 400,
+           border: '1pt solid orange',
+           padding: 20,
+           margin: "auto",
+           top: "50%",
+           left: "50%",
+           marginTop:  -100, /* Negative half of height. */
+           marginLeft:  -200, /* Negative half of width. */
+       };
+       return <div style={gameOverStyle}><h1>Game Over Sucker!</h1><p>Next time try collecting the health packs and weapons before going into battle!</p></div>
+   }
+});
 // This is the container component with all the state and logic.
 export default React.createClass({
     getInitialState(){
         // Keep all game state in this container. All other components will be pure (only properties passed from here).
         return {
-            gameOver: false,
+            gameStatus: "underConstruction", // is either underConstruction, playing, or over,
             world: [],
             dungeon: 4,
             rooms: {},
             corridors: {},
             entities: {},
-            player: settings.playerStartState,
+            player: RLGSettings.playerStartState,
             entityNamesByLoc: {},
             corridorCells: {},
             darkness: true,
@@ -226,6 +227,9 @@ export default React.createClass({
     componentDidMount(prevProps, prevState){
         this.generateDungeon();
     },
+    componentWillUnmount(){
+        console.log("component will unmount called!");
+    },
     generateDungeon(){
         var self = this;
         self.createWorld()
@@ -234,6 +238,7 @@ export default React.createClass({
             .then(self.createCorridors)
             .then(self.setStartingPositions)
             .then(() => {
+                this.setState({gameStatus: 'playing'});
                 window.addEventListener("keydown", function (event) {
                     if (event.defaultPrevented) return; // Should do nothing if the key event was already consumed.
                     self.move(event.key);
@@ -253,7 +258,7 @@ export default React.createClass({
         });
 
         let appStyle = {
-            width: settings.appWidth,
+            width: RLGSettings.appWidth,
             margin: "auto",
             height: 900
         };
@@ -265,9 +270,18 @@ export default React.createClass({
             marginRight: 10
         };
         let infoGroupStyle = {
-            width: settings.viewPortWidth
+            width: RLGSettings.viewPortWidth
         };
-        let animationTimout = 1500;
+        let spinnerStyle = {
+            position: "relative",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "blue",
+            visibility: this.state.gameStatus === 'underConstruction' ? 'visible' : 'hidden'
+        };
+        let animationTimeout = 1500;
         return (
             <div style={appStyle}>
                 <div style={{float: "left"}}>
@@ -276,8 +290,8 @@ export default React.createClass({
                         <div style={infoStyle}><h3>Health: {this.state.player.health}  |</h3></div>
                         <div style={infoStyle}><h3>Weapon: {`${this.state.player.weapon} (${this.state.player.attack})`}  |</h3></div>
                         <div style={infoStyle}><h3>Dungeon: {this.state.dungeon}  |</h3></div>
-                        <div style={infoStyle}><h3>Level: {Math.floor(this.state.player.xp/settings.xpRequiredPerLevel)}  |</h3></div>
-                        <div style={infoStyle}><h3>XP to Next Level: {settings.xpRequiredPerLevel - Math.ceil(this.state.player.xp % settings.xpRequiredPerLevel)}  |</h3></div>
+                        <div style={infoStyle}><h3>Level: {Math.floor(this.state.player.xp/RLGSettings.xpRequiredPerLevel)}  |</h3></div>
+                        <div style={infoStyle}><h3>XP to Next Level: {RLGSettings.xpRequiredPerLevel - Math.ceil(this.state.player.xp % RLGSettings.xpRequiredPerLevel)}  |</h3></div>
                     </div>
                     <ViewPort player={this.state.player} darkness={this.state.darkness}>
                         <World dungeon={this.state.dungeon} cellArray={this.state.world}/>
@@ -290,10 +304,11 @@ export default React.createClass({
                         enter: "animated",
                         enterActive: "rubberBand",
                         leave: "animated",
-                        leaveActive: "fadeOutRight"}} transitionEnterTimeout={animationTimout} transitionLeaveTimeout={animationTimout} >
+                        leaveActive: "fadeOutRight"}} transitionEnterTimeout={animationTimeout} transitionLeaveTimeout={animationTimeout} >
                         {messages.reverse()}
                     </CSSTransitionGroup>
                 </div>
+                <div id="spinner" style={spinnerStyle}><i className="fa fa-spinner" /></div>
             </div>
         )
     },
@@ -349,10 +364,10 @@ export default React.createClass({
     fight(enemy){
         let enemyCopy = Object.assign({}, enemy);
         let playerCopy = Object.assign({}, this.state.player);
-        let playerLevel = Math.floor(playerCopy.xp/settings.xpRequiredPerLevel);
+        let playerLevel = Math.floor(playerCopy.xp/RLGSettings.xpRequiredPerLevel);
         this.addMessage(`Attacking the bad guy with my ${playerCopy.weapon}!`);
-        let damageToPlayer = Math.round(settings.randomizeAttack(playerCopy.attack * (1 + this.state.dungeon * settings.dungeonAttackBonus)));
-        let damageToEnemy = Math.round(settings.randomizeAttack(playerCopy.attack * (1 + playerLevel * settings.levelAttackBonus)));
+        let damageToPlayer = Math.round(RLGSettings.randomizeAttack(playerCopy.attack * (1 + this.state.dungeon * RLGSettings.dungeonAttackBonus)));
+        let damageToEnemy = Math.round(RLGSettings.randomizeAttack(playerCopy.attack * (1 + playerLevel * RLGSettings.levelAttackBonus)));
         enemyCopy.health -= damageToEnemy;
         playerCopy.health -= damageToPlayer;
         console.log(`Lost ${damageToPlayer} health. ${playerCopy.health} remaining`);
@@ -361,7 +376,7 @@ export default React.createClass({
         else if(enemyCopy.health < 1) {
             playerCopy.x = enemy.x;
             playerCopy.y = enemy.y;
-            playerCopy.xp += settings.xpForKillingEnemy;
+            playerCopy.xp += RLGSettings.xpForKillingEnemy;
         }
         let nextEntities = Object.assign({}, this.state.entities, {[enemy.name]: enemyCopy});
 
@@ -469,7 +484,7 @@ export default React.createClass({
     },
     createEntities(){
         var self = this;
-        const dungeonSettings = settings['dungeon' + self.state.dungeon];
+        const dungeonSettings = RLGSettings['dungeon' + self.state.dungeon];
         var newEntities = {};
         let {enemies, maxEnemyAtk, enemyHealth, weapons, healthPacks, healthPackValue} = dungeonSettings;
         for(let i = 0; i < healthPacks; i++){
@@ -518,8 +533,8 @@ export default React.createClass({
             newEntities['boss'] = {
                 x:0, y: 0,
                 name: 'boss',
-                attack: settings.bossStartState.attack,
-                health: settings.bossStartState.health,
+                attack: RLGSettings.bossStartState.attack,
+                health: RLGSettings.bossStartState.health,
                 type: 'enemy',
                 size: 2
             }
@@ -531,9 +546,9 @@ export default React.createClass({
     createWorld(){
         let self = this;
         let newWorld = [];
-        for (var x = 0; x < settings.worldWidth; x++) {
+        for (var x = 0; x < RLGSettings.worldWidth; x++) {
             newWorld[x] = [];
-            for (var y = 0; y < settings.worldHeight; y++) {
+            for (var y = 0; y < RLGSettings.worldHeight; y++) {
                 newWorld[x][y] = 0;
             }
         }
@@ -553,8 +568,8 @@ export default React.createClass({
             let feasible = true;
             rect.x = Math.round(Math.random() * worldLength);
             rect.y = Math.round(Math.random() * worldHeight);
-            rect.width = settings.minRoomSize + Math.round(Math.random() * (settings.maxRoomSize - settings.minRoomSize));
-            rect.height = settings.minRoomSize + Math.round(Math.random() * (settings.maxRoomSize - settings.minRoomSize));
+            rect.width = RLGSettings.minRoomSize + Math.round(Math.random() * (RLGSettings.maxRoomSize - RLGSettings.minRoomSize));
+            rect.height = RLGSettings.minRoomSize + Math.round(Math.random() * (RLGSettings.maxRoomSize - RLGSettings.minRoomSize));
             // Check if it overlaps and if so, discard.
             for (let x = rect.x; x < rect.x + rect.width; x++) {
                 for (let y = rect.y; y < rect.y + rect.height; y++) {
@@ -573,7 +588,7 @@ export default React.createClass({
                         worldCopy[x][y] = 1;
                     }
                 }
-                let delay = (startTime + (promises.length + 1) * settings.timeBetweenRoomRender) - Date.now();
+                let delay = (startTime + (promises.length + 1) * RLGSettings.timeBetweenRoomRender) - Date.now();
                 if(delay < 0) delay = 500;
                 let p = new Promise(resolve => {
                     // make a snapshot to place at the specified interval.
@@ -627,7 +642,7 @@ export default React.createClass({
                     break;
             }
             let currentPt = Object.assign({}, startingPt);
-            for (let i = 0; i < settings.maxCorridorLength; i++) {
+            for (let i = 0; i < RLGSettings.maxCorridorLength; i++) {
                 moveToNext(currentPt);
                 let intersectingRoomKey = getIntersectingRoomKey(currentPt);
                 if (intersectingRoomKey) {
