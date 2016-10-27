@@ -36,15 +36,15 @@ var RLGSettings = {
     xpForKillingEnemy: 20,
     // let {enemies, maxEnemyAtk, enemyHealth, weapons, healthPacks, healthPackValue} = dungeonSettings;
     dungeon1: {
-        enemies: 10,
+        enemies: 5,
         maxEnemyAtk: 4,
-        enemyHealth: 10,
+        enemyHealth: 20,
         weapons: [['knife', 5], ['sword', 8]],
         healthPacks: 5,
         healthPackValue: 10
     },
     dungeon2: {
-        enemies: 15,
+        enemies: 5,
         maxEnemyAtk: 20,
         enemyHealth: 40,
         weapons: [['bow', 12], ['pistol', 16]],
@@ -52,7 +52,7 @@ var RLGSettings = {
         healthPackValue: 10
     },
     dungeon3: {
-        enemies: 20,
+        enemies: 5,
         maxEnemyAtk: 30,
         enemyHealth: 60,
         weapons: [['rifle', 20], ['assault rifle', 30]],
@@ -60,7 +60,7 @@ var RLGSettings = {
         healthPackValue: 10
     },
     dungeon4: {
-        enemies: 30,
+        enemies: 5,
         maxEnemyAtk: 40,
         enemyHealth: 80,
         weapons: [['bazooka', 40], ['grenade-launcher', 60]],
@@ -72,7 +72,7 @@ var RLGSettings = {
         y: 0,
         type: 'player',
         xp: 0,
-        health: 100,
+        health: 10000,
         attack: 3,
         weapon: 'fist',
         name: 'player'
@@ -376,18 +376,18 @@ export default React.createClass({
         self.setState({messages: newMsgArray});
     },
 
-    fight(enemy){
+    fight(enemy, delay){ // delay is time before returned promise is resolved. Currently only used for testing but probably has some utility elsewhere..
         let self = this;
         let enemyCopy = Object.assign({}, enemy);
         let playerCopy = Object.assign({}, self.state.player);
         let playerLevel = Math.floor(playerCopy.xp/RLGSettings.xpRequiredPerLevel);
-        self.addMessage(`Attacking the bad guy with my ${playerCopy.weapon}!`);
+        self.addMessage(`Attacking ${enemy.name} with my ${playerCopy.weapon}!`);
         let damageToPlayer = Math.round(RLGSettings.randomizeAttack(playerCopy.attack * (1 + self.state.dungeon * RLGSettings.dungeonAttackBonus)));
         let damageToEnemy = Math.round(RLGSettings.randomizeAttack(playerCopy.attack * (1 + playerLevel * RLGSettings.levelAttackBonus)));
         enemyCopy.health -= damageToEnemy;
         playerCopy.health -= damageToPlayer;
         console.log(`Lost ${damageToPlayer} health. ${playerCopy.health} remaining`);
-        console.log(`Inflicted ${damageToEnemy} damage on the enemy! They have ${enemy.health} health remaining.`);
+        console.log(`Inflicted ${damageToEnemy} damage on the enemy! They have ${enemyCopy.health} health remaining.`);
         if(playerCopy.health < 1) self.gameOver();  // Player is dead.
         else if(enemyCopy.health < 1) {
             playerCopy.x = enemy.x;
@@ -395,8 +395,8 @@ export default React.createClass({
             playerCopy.xp += RLGSettings.xpForKillingEnemy;
         }
         let nextEntities = Object.assign({}, self.state.entities, {[enemy.name]: enemyCopy});
-
-        self.setState({entities: nextEntities, player: playerCopy});
+        // Return a promise so caller can delay next action for some time.
+        return new Promise(resolve => self.setState({entities: nextEntities, player: playerCopy}, () => setTimeout(()=> resolve(), delay)));
     },
     gameOver(){
         let self = this;
@@ -697,42 +697,60 @@ export default React.createClass({
         let self = this;
         let entities = this.state.entities;
         let entityNames = Object.keys(self.state.entities);
+        let fightOver = false;
 
         collectAll('health', h => self.collect(h))
             .then(() => collectAll('weapon', w => self.collect(w)))
-            .then(() => collectAll('enemy', e => {
-                let round = 0;
-                while(e.health > 0 && self.state.player.health > 0){
-                    round++;
-                    setTimeout(() => self.fight(e), round * 500);
-                    if(self.state.player.health < 0) {
-                        console.log("The player is dead");
-                        break;
-                    }
-                    if(e.health < 0) console.log("Killed Enemy " + e.name);
-                }
-            }))
-            .then(() => collectAll('portal', p => self.collect(p)));
+            .then(() => fightAll())
+            .then(() => setTimeout(()=> {
+                console.log("*********** ENTERING THE NEXT DUNGEON *************");
+                if(self.state.dungeon < 4) self.nextDungeon();
+                else console.log("******************* YOU WIN ********************");
+            }, 3000
+            ));
 
         function collectAll(type, cb) {
             let selected = entityNames.filter(eName => entities[eName].type === type);
             let promises = [];
             for (let i = 0; i < selected.length; i++) {
                 let e = entities[selected[i]];
-                let delay = (i + 1) * 1000;
+                let delay = (i + 1) * 300; // delay to make sure sequential.
                 let p = new Promise(function(resolve){
-
                     setTimeout(
                         function() {
                             cb(e);
                             resolve();
                         }, delay)
-
-
                 });
                 promises.push(p);
             }
             return Promise.all(promises);
+        }
+        function fightAll(){
+            let enemies = entityNames.filter(eName => entities[eName].type === 'enemy');
+            let promises = [];
+            for (let i=0; i< enemies.length; i++){
+                promises.push(fightEnemy(entities[enemies[i]]));
+            }
+            return Promise.all(promises);
+        }
+        function fightEnemy(e){
+            if(fightOver) return Promise.resolve();
+            if(e.health < 0) {
+                console.log("Killed " + e.name);
+                fightOver = true;
+                return Promise.resolve();
+            }
+            if(self.state.player.health < 0) {
+                fightOver = true;
+                console.log("The player has been killed");
+                return Promise.resolve();
+            }
+            else{
+                console.log("fighting " + e.name);
+                self.fight(e, 500).then(() => fightEnemy(self.state.entities[e.name]));
+                // Behavior is NOT a fight every 500ms. It is a fight with each enemy without delay, then a 500ms delay before the next round.
+            }
         }
     }
 });
