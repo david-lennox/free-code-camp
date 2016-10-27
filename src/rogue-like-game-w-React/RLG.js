@@ -219,7 +219,7 @@ export default React.createClass({
         return {
             gameStatus: "noGame", // is either noGame, underConstruction, playing, or over,
             world: [],
-            dungeon: 4,
+            dungeon: 1,
             rooms: {},
             corridors: {},
             entities: {},
@@ -295,6 +295,7 @@ export default React.createClass({
                 <div style={{float: "left"}}>
                     <div style={infoGroupStyle}>
                         <button style={{float: "right"}} onClick={() => self.setState({darkness: !self.state.darkness})}>Darkness</button>
+                        <button onClick={self.simulateGame}>Simulate</button>
                         <div style={infoStyle}><h3>Health: {self.state.player.health}  |</h3></div>
                         <div style={infoStyle}><h3>Weapon: {`${self.state.player.weapon} (${self.state.player.attack})`}  |</h3></div>
                         <div style={infoStyle}><h3>Dungeon: {self.state.dungeon}  |</h3></div>
@@ -321,6 +322,7 @@ export default React.createClass({
                     <button style={{visibility: self.state.gameStatus === 'noGame' ? 'visible' : 'hidden', position: "absolute", top: 100, left: 100}}
                             onClick={self.generateDungeon}>Create New Game</button>
                 </div>
+
             </div>
         )
     },
@@ -689,6 +691,45 @@ export default React.createClass({
                     && currentPt.y >= rm.y + 2 && currentPt.y <= rm.y + rm.height - 2
             });
             return intersectingRoomKey ? intersectingRoomKey : null;
+        }
+    },
+    simulateGame(){  // todo. Add an argument (allEnemies) is boolean. If true player will kill all.
+        let self = this;
+        let entities = this.state.entities;
+        let entityNames = Object.keys(self.state.entities);
+
+        collectAll('health', h => self.collect(h))
+            .then(collectAll('weapon', w => self.collect(w)))
+            .then(collectAll('enemy', e => {
+                while(e.health > 0 && self.state.player.health > 0){
+                    self.fight(e);
+                    if(self.state.player.health < 0) {
+                        console.log("The player is dead");
+                        break;
+                    }
+                }
+            }))
+            .then(collectAll('portal', p => self.collect(p)));
+
+        function collectAll(type, cb) {
+            let selected = entityNames.filter(eName => entities[eName].type === type);
+            let promises = [];
+            for (let i = 0; i < selected.length; i++) {
+                let e = entities[selected[i]];
+                let delay = (i + 1) * 1000;
+                let p = new Promise(function(resolve){
+
+                    setTimeout(
+                        function() {
+                            cb(e);
+                            resolve();
+                        }, delay)
+
+
+                });
+                promises.push(p);
+            }
+            return Promise.all(promises);
         }
     }
 });
