@@ -37,8 +37,8 @@ var RLGSettings = {
     // let {enemies, maxEnemyAtk, enemyHealth, weapons, healthPacks, healthPackValue} = dungeonSettings;
     dungeon1: {
         enemies: 10,
-        maxEnemyAtk: 10,
-        enemyHealth: 20,
+        maxEnemyAtk: 4,
+        enemyHealth: 10,
         weapons: [['knife', 5], ['sword', 8]],
         healthPacks: 5,
         healthPackValue: 10
@@ -699,17 +699,20 @@ export default React.createClass({
         let entityNames = Object.keys(self.state.entities);
 
         collectAll('health', h => self.collect(h))
-            .then(collectAll('weapon', w => self.collect(w)))
-            .then(collectAll('enemy', e => {
+            .then(() => collectAll('weapon', w => self.collect(w)))
+            .then(() => collectAll('enemy', e => {
+                let round = 0;
                 while(e.health > 0 && self.state.player.health > 0){
-                    self.fight(e);
+                    round++;
+                    setTimeout(() => self.fight(e), round * 500);
                     if(self.state.player.health < 0) {
                         console.log("The player is dead");
                         break;
                     }
+                    if(e.health < 0) console.log("Killed Enemy " + e.name);
                 }
             }))
-            .then(collectAll('portal', p => self.collect(p)));
+            .then(() => collectAll('portal', p => self.collect(p)));
 
         function collectAll(type, cb) {
             let selected = entityNames.filter(eName => entities[eName].type === type);
