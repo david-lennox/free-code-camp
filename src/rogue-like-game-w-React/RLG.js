@@ -231,28 +231,29 @@ export default React.createClass({
         }
     },
     componentDidMount(){
-        console.log("component did mount.")
+        console.log("component did mount.");
+        this.generateDungeon().then(() => console.log("Game loaded and ready to play."));
     },
     componentWillUnmount(){
         console.log("component Will unmount - but who knows if it really did?");
     },
     generateDungeon(){
         var self = this;
-        var lastPromise = self.createWorld()
+        return self.createWorld()
             .then(self.createEntities)
             .then(self.createRooms)
             .then(self.createCorridors)
             .then(self.setStartingPositions)
             .then(() => {
                 self.setState({gameStatus: 'playing'});
-                window.addEventListener("keydown", function (event) {
-                    if (event.defaultPrevented) return; // Should do nothing if the key event was already consumed.
-                    self.move(event.key);
-                    // Consume the event to avoid it being handled twice
-                    event.preventDefault();
-                }, true);
+                window.addEventListener("keydown", this.handleKeyPress, true);
             });
-        console.log("last promise created");
+    },
+    handleKeyPress(event) {
+        if (event.defaultPrevented) return; // Should do nothing if the key event was already consumed.
+        this.move(event.key);
+        // Consume the event to avoid it being handled twice
+        event.preventDefault();
     },
     render(){
         let self = this;
@@ -286,8 +287,8 @@ export default React.createClass({
             left: 0,
             width: "100%",
             height: "100%",
-            backgroundColor: "blue",
-            visibility: self.state.gameStatus === "playing" ? "hidden" : "visible"
+            backgroundColor: "#ebeef4",
+            visibility: self.state.gameStatus === "underConstruction" ? "visible" : "hidden"
         };
         let animationTimeout = 1500;
         return (
@@ -319,9 +320,8 @@ export default React.createClass({
                 </div>
                 <div style={spinnerStyle} id="spinner">
                     <i style={{visibility: self.state.gameStatus === 'underConstruction' ? 'visible' : 'hidden'}} className="fa fa-spinner" />
-                    <button style={{visibility: self.state.gameStatus === 'noGame' ? 'visible' : 'hidden', position: "absolute", top: 100, left: 100}}
-                            onClick={self.generateDungeon}>Create New Game</button>
                 </div>
+
 
             </div>
         )
@@ -400,7 +400,9 @@ export default React.createClass({
     },
     gameOver(){
         let self = this;
-        self.setState({gameOver: true})
+        self.setState({gameOver: true});
+        window.removeEventListener("keydown", this.handleKeyPress, true);
+        self.addMessage("GAME OVER - YOU GOT KILLED! BETTER LUCK NEXT TIME.");
     },
     move(arrowKey){
         let self = this;
@@ -701,13 +703,12 @@ export default React.createClass({
 
         collectAll('health', h => self.collect(h))
             .then(() => collectAll('weapon', w => self.collect(w)))
-            .then(() => fightAll())
+            .then(fightAll)
             .then(() => setTimeout(()=> {
                 console.log("*********** ENTERING THE NEXT DUNGEON *************");
-                if(self.state.dungeon < 4) self.nextDungeon();
+                if(self.state.dungeon < 4) return self.nextDungeon();
                 else console.log("******************* YOU WIN ********************");
-            }, 3000
-            ));
+            }, 2000));
 
         function collectAll(type, cb) {
             let selected = entityNames.filter(eName => entities[eName].type === type);
@@ -752,6 +753,7 @@ export default React.createClass({
                 // Behavior is NOT a fight every 500ms. It is a fight with each enemy without delay, then a 500ms delay before the next round.
             }
         }
+        if(self.state.dungeon < 4) this.simulateGame();
     }
 });
 
