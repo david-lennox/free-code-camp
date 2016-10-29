@@ -237,17 +237,22 @@ export default React.createClass({
     componentWillUnmount(){
         console.log("component Will unmount - but who knows if it really did?");
     },
-    generateDungeon(){
+    generateDungeon(delay){
+        let pause = delay || 0;
         var self = this;
-        return self.createWorld()
-            .then(self.createEntities)
-            .then(self.createRooms)
-            .then(self.createCorridors)
-            .then(self.setStartingPositions)
-            .then(() => {
-                self.setState({gameStatus: 'playing'});
-                window.addEventListener("keydown", this.handleKeyPress, true);
-            });
+        return new Promise(resolve => {
+            self.createWorld()
+                .then(self.createEntities)
+                .then(self.createRooms)
+                .then(self.createCorridors)
+                .then(self.setStartingPositions)
+                .then(() => {
+                    self.setState({gameStatus: 'playing'});
+                    window.addEventListener("keydown", this.handleKeyPress, true); // Todo. check this is not a problem to allocate multiple times.
+                    setTimeout(() => resolve(), pause);
+                });
+        }
+        )
     },
     handleKeyPress(event) {
         if (event.defaultPrevented) return; // Should do nothing if the key event was already consumed.
@@ -704,11 +709,11 @@ export default React.createClass({
         collectAll('health', h => self.collect(h))
             .then(() => collectAll('weapon', w => self.collect(w)))
             .then(fightAll)
-            .then(() => setTimeout(()=> {
-                console.log("*********** ENTERING THE NEXT DUNGEON *************");
-                if(self.state.dungeon < 4) return self.nextDungeon();
-                else console.log("******************* YOU WIN ********************");
-            }, 2000));
+            .then(() => this.generateDungeon(2000))
+            .then(() => {
+                if(this.dungeon < 4) this.simulateGame()
+            });
+
 
         function collectAll(type, cb) {
             let selected = entityNames.filter(eName => entities[eName].type === type);
@@ -753,7 +758,6 @@ export default React.createClass({
                 // Behavior is NOT a fight every 500ms. It is a fight with each enemy without delay, then a 500ms delay before the next round.
             }
         }
-        if(self.state.dungeon < 4) this.simulateGame();
     }
 });
 
