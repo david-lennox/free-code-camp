@@ -2,17 +2,13 @@ import React from 'react';
 import graphlib from 'graphlib';
 import '../../node_modules/animate.css/animate.min.css'
 import CSSTransitionGroup from 'react-addons-css-transition-group';
-import Modal from 'react-modal';
 
 /*
 * TODO: REMAINING USER STORIES
 *   - You must use Sass
-*   - When I find and beat the boss, I win.
-*   - The game should be challenging, but theoretically winnable.
 *       -- todo. implement testWinable function that simulates some number of random game plays that collect all health
 *       and weapons and then go around killing a specifed number of enemy in each dungeon.
 * TODO: NICE TO HAVE
-*   - Change entity creation so old ones remain - currently naming convention means they get replace (I think).
     - Draw svg rectangles for the world rather than div cells. Would make world render much faster.
 *   - Use classnames library to apply classes. This is a React best practice these days I think.
  */
@@ -36,7 +32,7 @@ var RLGSettings = {
     xpForKillingEnemy: 20,
     // let {enemies, maxEnemyAtk, enemyHealth, weapons, healthPacks, healthPackValue} = dungeonSettings;
     dungeon1: {
-        enemies: 5,
+        enemies: 12,
         maxEnemyAtk: 4,
         enemyHealth: 20,
         weapons: [['knife', 5], ['sword', 8]],
@@ -44,7 +40,7 @@ var RLGSettings = {
         healthPackValue: 10
     },
     dungeon2: {
-        enemies: 5,
+        enemies: 12,
         maxEnemyAtk: 20,
         enemyHealth: 40,
         weapons: [['bow', 12], ['pistol', 16]],
@@ -52,7 +48,7 @@ var RLGSettings = {
         healthPackValue: 10
     },
     dungeon3: {
-        enemies: 5,
+        enemies: 12,
         maxEnemyAtk: 30,
         enemyHealth: 60,
         weapons: [['rifle', 20], ['assault rifle', 30]],
@@ -60,7 +56,7 @@ var RLGSettings = {
         healthPackValue: 10
     },
     dungeon4: {
-        enemies: 5,
+        enemies: 12,
         maxEnemyAtk: 40,
         enemyHealth: 80,
         weapons: [['bazooka', 40], ['grenade-launcher', 60]],
@@ -72,7 +68,7 @@ var RLGSettings = {
         y: 0,
         type: 'player',
         xp: 0,
-        health: 10000,
+        health: 3800,
         attack: 3,
         weapon: 'fist',
         name: 'player'
@@ -134,7 +130,7 @@ var ViewPort = React.createClass({
     render(){
         let self = this;
         const {viewPortWidth, viewPortHeight, cellSize, worldWidth, worldHeight} = RLGSettings;
-        const {player, darkness} = self.props;
+        const {player, darkness, gameStatus} = self.props;
         let offset = {};
         offset.x = (viewPortWidth/2 - player.x * cellSize);
         offset.x = offset.x > 0 ? 0 : offset.x < (viewPortWidth - worldWidth * cellSize) ?
@@ -157,7 +153,8 @@ var ViewPort = React.createClass({
             width: worldWidth * cellSize,
             height: worldHeight * cellSize,
             left: offset.x,
-            top: offset.y
+            top: offset.y,
+            visibility: gameStatus === "underConstruction" ? "hidden" : "visible"
         };
         let darknessStyle = {
             position: "absolute",
@@ -165,6 +162,21 @@ var ViewPort = React.createClass({
             height: worldHeight * cellSize,
             mask: "url(#lightMask)",
             visibility: darkness ? "visible" : "hidden"
+        };
+        let splashScreenStyle = {
+            position: "relative",
+            width: viewPortWidth,
+            height: viewPortHeight,
+            backgroundColor: "white",
+            visibility: gameStatus === "underConstruction" ? "visible" : "hidden"
+        };
+        let spinnerStyle = {
+            position: "relative",
+            top: viewPortHeight/2,
+            left: viewPortWidth/2,
+            color: "black",
+            fontSize: 80,
+            visibility: gameStatus === "underConstruction" ? "visible" : "hidden"
         };
         return (
             <div id="viewPort" style={viewPortStyle}>
@@ -182,34 +194,11 @@ var ViewPort = React.createClass({
                         </defs>
                         <rect style={darknessStyle}/>
                     </svg>
-
-
                 </div>
-
+                <div id="splashScreen" style={splashScreenStyle}><i style={spinnerStyle} id="spinner" className="fa fa-spinner fa-6" /></div>
             </div>
         )
     }
-});
-var GameOver = React.createClass({
-   render(){
-       let self = this;
-       var gameOverStyle = {
-           visibility: self.props.over ? 'visible' : 'hidden',
-           position: 'fixed',
-           backgroundColor: 'red',
-           color: 'white',
-           width: 700,
-           height: 400,
-           border: '1pt solid orange',
-           padding: 20,
-           margin: "auto",
-           top: "50%",
-           left: "50%",
-           marginTop:  -100, /* Negative half of height. */
-           marginLeft:  -200, /* Negative half of width. */
-       };
-       return <div style={gameOverStyle}><h1>Game Over Sucker!</h1><p>Next time try collecting the health packs and weapons before going into battle!</p></div>
-   }
 });
 // This is the container component with all the state and logic.
 export default React.createClass({
@@ -217,7 +206,7 @@ export default React.createClass({
         console.log("Get Initial State called");
         // Keep all game state in this container. All other components will be pure (only properties passed from here).
         return {
-            gameStatus: "noGame", // is either noGame, underConstruction, playing, or over,
+            gameStatus: "underConstruction", // is either underConstruction, playing, or over,
             world: [],
             dungeon: 1,
             rooms: {},
@@ -249,16 +238,18 @@ export default React.createClass({
                 .then(() => {
                     self.setState({gameStatus: 'playing'});
                     window.addEventListener("keydown", this.handleKeyPress, true); // Todo. check this is not a problem to allocate multiple times.
-                    setTimeout(() => resolve(), pause);
+                    setTimeout(resolve, pause);
                 });
         }
         )
     },
     handleKeyPress(event) {
         if (event.defaultPrevented) return; // Should do nothing if the key event was already consumed.
-        this.move(event.key);
-        // Consume the event to avoid it being handled twice
-        event.preventDefault();
+        if (["ArrowUp", "ArrowDown", "ArrowRight", "ArrowLeft"].includes(event.key)) {
+            this.move(event.key);
+            // Consume the event to avoid it being handled twice
+            event.preventDefault();
+        }
     },
     render(){
         let self = this;
@@ -280,35 +271,28 @@ export default React.createClass({
         let infoStyle = {
             float: "left",
             color: "black",
-            fontSize: 8,
+            //fontSize: ,
             marginRight: 10
         };
         let infoGroupStyle = {
             width: RLGSettings.viewPortWidth
-        };
-        let spinnerStyle = {
-            position: "relative",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "#ebeef4",
-            visibility: self.state.gameStatus === "underConstruction" ? "visible" : "hidden"
         };
         let animationTimeout = 1500;
         return (
             <div id="RLG" style={appStyle}>
                 <div style={{float: "left"}}>
                     <div style={infoGroupStyle}>
-                        <button style={{float: "right"}} onClick={() => self.setState({darkness: !self.state.darkness})}>Darkness</button>
-                        <button onClick={self.simulateGame}>Simulate</button>
-                        <div style={infoStyle}><h3>Health: {self.state.player.health}  |</h3></div>
-                        <div style={infoStyle}><h3>Weapon: {`${self.state.player.weapon} (${self.state.player.attack})`}  |</h3></div>
-                        <div style={infoStyle}><h3>Dungeon: {self.state.dungeon}  |</h3></div>
-                        <div style={infoStyle}><h3>Level: {Math.floor(self.state.player.xp/RLGSettings.xpRequiredPerLevel)}  |</h3></div>
-                        <div style={infoStyle}><h3>XP to Next Level: {RLGSettings.xpRequiredPerLevel - Math.ceil(self.state.player.xp % RLGSettings.xpRequiredPerLevel)}  |</h3></div>
+                        <button style={{float: "right"}} onClick={() => self.setState({darkness: !self.state.darkness})}>Toggle Darkness</button>
+                        <button onClick={self.simulateGame}>Simulate Game Play</button>
                     </div>
-                    <ViewPort player={self.state.player} darkness={self.state.darkness}>
+                    <div style={infoGroupStyle}>
+                        <div style={infoStyle}><h4>Health: {self.state.player.health}  |</h4></div>
+                        <div style={infoStyle}><h4>Weapon: {`${self.state.player.weapon} (${self.state.player.attack})`}  |</h4></div>
+                        <div style={infoStyle}><h4>Dungeon: {self.state.dungeon}  |</h4></div>
+                        <div style={infoStyle}><h4>Level: {Math.floor(self.state.player.xp/RLGSettings.xpRequiredPerLevel)}  |</h4></div>
+                        <div style={infoStyle}><h4>XP to level up: {RLGSettings.xpRequiredPerLevel - Math.ceil(self.state.player.xp % RLGSettings.xpRequiredPerLevel)}  |</h4></div>
+                    </div>
+                    <ViewPort player={self.state.player} darkness={self.state.darkness} gameStatus={this.state.gameStatus}>
                         <World dungeon={self.state.dungeon} cellArray={self.state.world}/>
                         {entityElements}
                     </ViewPort>
@@ -323,11 +307,6 @@ export default React.createClass({
                         {messages.reverse()}
                     </CSSTransitionGroup>
                 </div>
-                <div style={spinnerStyle} id="spinner">
-                    <i style={{visibility: self.state.gameStatus === 'underConstruction' ? 'visible' : 'hidden'}} className="fa fa-spinner" />
-                </div>
-
-
             </div>
         )
     },
@@ -507,8 +486,14 @@ export default React.createClass({
     },
     nextDungeon(){
         let self = this;
-        let newDungeon = self.state.dungeon + 1;
-        self.setState({entityNamesByLoc: {}, world: [], entities: {}, dungeon: newDungeon}, () => self.generateDungeon());
+        this.addMessage("***** HEADING TO THE NEXT DUNGEON ******");
+        let newDungeonNo = self.state.dungeon + 1;
+        return new Promise(resolve => {
+            self.setState({entityNamesByLoc: {}, world: [], entities: {}, gameStatus: "underConstruction", dungeon: newDungeonNo}, () => {
+                self.generateDungeon().then(resolve)
+            });
+            }
+        );
     },
     createEntities(){
         let self = this;
@@ -704,14 +689,23 @@ export default React.createClass({
         let self = this;
         let entities = this.state.entities;
         let entityNames = Object.keys(self.state.entities);
-        let fightOver = false;
+        let fightOver = {};
+        let gameOver = false;
 
         collectAll('health', h => self.collect(h))
             .then(() => collectAll('weapon', w => self.collect(w)))
             .then(fightAll)
-            .then(() => this.generateDungeon(2000))
+            .then(function() {
+                console.log("Killed them all");
+                if(self.state.dungeon < 4) return self.nextDungeon();
+                else {
+                    console.log("**********************  YOU HAVE WON!  *************************");
+                    gameOver = true;
+                    return Promise.resolve()
+                }
+            })
             .then(() => {
-                if(this.dungeon < 4) this.simulateGame()
+                if(self.state.dungeon < 5 && !gameOver) self.simulateGame()
             });
 
 
@@ -720,7 +714,7 @@ export default React.createClass({
             let promises = [];
             for (let i = 0; i < selected.length; i++) {
                 let e = entities[selected[i]];
-                let delay = (i + 1) * 300; // delay to make sure sequential.
+                let delay = (i + 1) * 100; // delay to make sure sequential.
                 let p = new Promise(function(resolve){
                     setTimeout(
                         function() {
@@ -741,20 +735,20 @@ export default React.createClass({
             return Promise.all(promises);
         }
         function fightEnemy(e){
-            if(fightOver) return Promise.resolve();
+            if(fightOver[e.name]) return Promise.resolve();
             if(e.health < 0) {
                 console.log("Killed " + e.name);
-                fightOver = true;
+                fightOver[e.name] = true;
                 return Promise.resolve();
             }
             if(self.state.player.health < 0) {
-                fightOver = true;
+                fightOver[e.name] = true;
                 console.log("The player has been killed");
                 return Promise.resolve();
             }
             else{
                 console.log("fighting " + e.name);
-                self.fight(e, 500).then(() => fightEnemy(self.state.entities[e.name]));
+                return self.fight(e, 500).then(() => fightEnemy(self.state.entities[e.name]));
                 // Behavior is NOT a fight every 500ms. It is a fight with each enemy without delay, then a 500ms delay before the next round.
             }
         }
