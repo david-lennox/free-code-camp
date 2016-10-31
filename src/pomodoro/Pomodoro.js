@@ -14,21 +14,20 @@ var Pomodoro = React.createClass({
         return {
             secondsToWork: 10 * 60,
             secondsToRest: 5 * 60,
-            status: "paused", // can also be 'working', 'resting', 'paused'
-            elapsed: 0
+            period: "working", // or resting
+            paused: true,
+            secondsElapsedSinceStartOrUnpause: 0,
+            secondsElapsedBeforePause: 0
         }
     },
     render(){
-        let progressFill = {};
-        let progress = this.state.elapsed / this.currentInterval();
+        let elapsed = this.state.secondsElapsedBeforePause + this.state.secondsElapsedSinceStartOrUnpause;
+        let progress = elapsed / this.currentInterval();
         let maxProgressFillHeight = pomodoroSettings.displayHeight - 2 * pomodoroSettings.circleStroke;
-
-        if(['working', 'resting'].includes(this.state.status)){
-            progressFill = {
-                height: maxProgressFillHeight * progress,
-                y: maxProgressFillHeight + pomodoroSettings.circleStroke - maxProgressFillHeight * progress
-            };
-        }
+        let progressFill = {
+            height: maxProgressFillHeight * progress,
+            y: maxProgressFillHeight + pomodoroSettings.circleStroke - maxProgressFillHeight * progress
+        };
         let topDisplayTextStyle = {
             position: "absolute",
             top: pomodoroSettings.displayWidth/5,
@@ -63,9 +62,17 @@ var Pomodoro = React.createClass({
                         <i className="fa fa-arrow-up"></i>
                     </button>
                     <div>{this.state.secondsToWork/60}</div>
-                    <button onClick={this.beginSession}>Begin Session</button>
-                    <button onClick={() => this.setState({status: "paused"})}>Pause</button>
-                    <button onClick={() => this.setState({status: "paused", elapsed: 0})}>Reset</button>
+                    <button onClick={this.beginOrRestart}>Start</button>
+                    <button onClick={() => this.setState({
+                        paused: true,
+                        secondsElapsedBeforePause: elapsed,
+                        secondsElapsedSinceStartOrUnpause: 0
+                    })}>Pause</button>
+                    <button onClick={() => this.setState({
+                        paused: true,
+                        period: "working",
+                        secondsElapsedBeforePause: 0,
+                        secondsElapsedSinceStartOrUnpause: 0})}>Reset</button>
                     <div id="mainDisplay" className="mainDisplay">
                         <svg className="mainDisplay">
                             <defs>
@@ -82,7 +89,7 @@ var Pomodoro = React.createClass({
                                     r={pomodoroSettings.displayWidth/2 - pomodoroSettings.circleStroke/2}
                                     cx={pomodoroSettings.displayWidth/2}
                                     cy={pomodoroSettings.displayWidth/2}/>
-                            {['working', 'resting'].includes(this.state.status) ?
+                            {['working', 'resting'].includes(this.state.period) ?
                                 <rect fill="green"
                                   y={progressFill.y}
                                   width={pomodoroSettings.displayHeight}
@@ -91,37 +98,39 @@ var Pomodoro = React.createClass({
                             /> : ""}
                         </svg>
                         <div id="topDisplayText" style={topDisplayTextStyle}>
-                            <h3>{this.state.status === "working" ? "Session" : "Break"}</h3>
+                            <h3>{this.state.period === "working" ? "Session" : "Break"}</h3>
                         </div>
                         <div id="bottomDisplayText" style={bottomDisplayTextStyle}>
-                            <h3>{Math.floor((this.currentInterval() - this.state.elapsed)/60)}:{('0' + (this.currentInterval() - this.state.elapsed)%60).slice(-2)}</h3>
+                            <h3>{Math.floor((this.currentInterval() - elapsed)/60)}:{('0' + (this.currentInterval() - elapsed)%60).slice(-2)}</h3>
                         </div>
                     </div>
                 </div>
             </div>)
     },
-    beginSession(){
-        this.setState({status: "working", currentSessionStartTime: Math.round(Date.now()/1000) * 1000}, this.countDown);
+    beginOrRestart(){
+        this.setState({paused: false, startOrUnpauseTime: Math.round(Date.now()/1000) * 1000}, this.countDown);
     },
     countDown(){
         let self = this;
-        if(!["working", "resting"].includes(self.state.status)) return;
-        if(self.state.elapsed > self.currentInterval()) {
+        if(self.state.paused) return;
+        if(self.state.secondsElapsedSinceStartOrUnpause + self.state.secondsElapsedBeforePause > self.currentInterval()) {
             // todo. Do something to handle end of session.
             return;
         }
         let millisecondsRemainingThisSecond = Date.now() % 1000;
-        setTimeout(tick, millisecondsRemainingThisSecond);
+        console.log(millisecondsRemainingThisSecond);
+        let timeoutKey = setTimeout(tick, millisecondsRemainingThisSecond);
+        self.setState({timeoutKey: timeoutKey});
         function tick(){
             self.setState({
-                elapsed: Math.round((Date.now() - self.state.currentSessionStartTime)/1000)
+                secondsElapsedSinceStartOrUnpause: Math.round((Date.now() - self.state.startOrUnpauseTime)/1000)
             });
             self.countDown();
         }
     },
     currentInterval() {
         let self = this;
-        return self.state.status === "working" ? self.state.secondsToWork : self.state.secondsToRest;
+        return self.state.period === "working" ? self.state.secondsToWork : self.state.secondsToRest;
     }
 });
 
