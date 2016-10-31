@@ -57,7 +57,22 @@ export default
     {
         link: "/rogue-like-game",
         title: 'Rogue Like Game with React',
-        description: 'A game where you move a little player around and attack enemies and collect things.',
-        completion: 50
-    }
+        description: `A game where you move a little player around and attack enemies and collect things. By far most
+        significant FreeCodeCamp exercise to date. Approximately 1K lines of code. Things of interest in this app:
+        1. Random generation of rooms by attempting to throw randomly generated squares at the game board.
+        2. Random generation of corridors between rooms in a similar (but slightly trickier) fashion.
+        3. Many functions return promises to enable them to be called in order. This required some functions to have
+        internal functions (also returning Promises) to sequence the sub-steps of the higher level process.
+        4. Use of SVG masking to create the darkness overlay.
+        5. Use of CSS overflow and offset to move the world around within the viewable area.
+        6. Use of a splash-screen during dungeon load.`,
+        completion: 100
+    },
+    {
+        link: "/pomodoro",
+        title: 'Pomodoro Clock',
+        description: `A Pomodoro clock application - pretty basic..`,
+        completion: 10
+    },
+
 ]
