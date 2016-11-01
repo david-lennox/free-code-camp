@@ -71,8 +71,15 @@ export default
     {
         link: "/pomodoro",
         title: 'Pomodoro Clock',
-        description: `A Pomodoro clock application - pretty basic..`,
-        completion: 10
+        description: `A Pomodoro clock. Uses SCSS, which is not compiled by the Webpack build system in place,
+        therefore you need to run >sass --watch directory at the command prompt to have it compile to css as you code.`,
+        completion: 100
+    },
+    {
+        link: "/tictactoe",
+        title: 'Tic Tac Toe',
+        description: `A game of Tic Tac Toe.`,
+        completion: 0
     },
 
 ]

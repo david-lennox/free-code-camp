@@ -4,66 +4,69 @@ $displayHeight: 250px;
 $circle-stroke: blue;
 $circle-stroke-width: 4px;
 
-.display-text {
-  position: absolute;
-  text-align: center;
-  width: $displayWidth;
-  margin: auto;
-}
+.pomodoro {
+  .display-text {
+    position: absolute;
+    text-align: center;
+    width: $displayWidth;
+    margin: auto;
+  }
 
-.top-display-text {
-  @extend .display-text;
-  top: $displayHeight / 6;
-}
+  .top-display-text {
+    @extend .display-text;
+    top: $displayHeight / 6;
+  }
 
-.bottom-display-text {
-  @extend .display-text;
-  bottom: $displayHeight / 6;
-}
+  .bottom-display-text {
+    @extend .display-text;
+    bottom: $displayHeight / 6;
+  }
 
-.mainDisplay {
+  .mainDisplay {
     position: relative;
     width: 250px;
     height: 250px;
     margin: auto;
-}
+  }
 
-.displayCircle {
+  .displayCircle {
     stroke: $circle-stroke;
     stroke-width: 4;
     fill: none;
     margin: auto;
     text-align: center;
-}
+  }
 
-h1, h2, h3, i {
+  h1, h2, h3, i {
     text-align: center;
-}
+  }
 
-.fingerCursor {
+  .fingerCursor {
     cursor: pointer;
-}
+  }
 
-.mask-circle {
-  fill: white;
-  stroke-width: 4px;
-}
+  .mask-circle {
+    fill: white;
+    stroke-width: 4px;
+  }
 
-.control-group {
-  margin: auto;
-  font-size: xx-large;
-  width: $displayWidth;
-  text-align: center;
-}
+  .control-group {
+    margin: auto;
+    font-size: xx-large;
+    width: $displayWidth;
+    text-align: center;
+  }
 
-i {
-  padding-left: 20px;
-  padding-top: 10px;
-  &:nth-last-of-type(1){
-    padding-right: 10px;
+  i {
+    padding-left: 20px;
+    padding-top: 10px;
+    &:nth-last-of-type(1){
+      padding-right: 10px;
+    }
+  }
+
+  .progress-fill {
+    mask: url(#circleMask);
   }
 }
 
-.progress-fill {
-  mask: url(#circleMask);
-}

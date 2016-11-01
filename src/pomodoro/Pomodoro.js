@@ -29,7 +29,7 @@ var Pomodoro = React.createClass({
             y: maxProgressFillHeight + pomodoroSettings.circleStroke - maxProgressFillHeight * progress
         };
         return (
-            <div id="pomodoro">
+            <div id="pomodoro" className="pomodoro">
                 <h1>Free Code Camp Pomodoro Clock</h1>
                 <div id="app">
                     <h3>Rest Interval: {this.state.secondsToRest/60}
