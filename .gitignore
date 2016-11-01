@@ -14,3 +14,6 @@ build
 .DS_Store
 npm-debug.log*
 .idea/
+src/pomodoro/pomodoro.css.map
+src/tictactoe/ttt.css
+src/tictactoe/ttt.css.map

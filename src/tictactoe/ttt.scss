@@ -1,0 +1,32 @@
+$boardSize: 600px;
+
+.ttt {
+  .board {
+    width: $boardSize;
+    height: $boardSize;
+    background-color: #eeeeee;
+    margin: auto;
+  }
+  .cell {
+    width: $boardSize/3;
+    height: $boardSize/3;
+    float: left;
+    border: 2px solid black;
+    line-height: $boardSize/3;
+    text-align: center;
+    font-size: xx-large;
+    cursor: pointer;
+  }
+  h1, h3 {
+    text-align: left;
+  }
+}
+
+.board-and-display {
+  width: $boardSize;
+  position: relative;
+  margin: auto;
+}
+
+
+
