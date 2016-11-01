@@ -25,57 +25,57 @@ var RLGSettings = {
     viewPortWidth: 1000,
     viewPortHeight: 800,
     appWidth: 1300,
-    levelAttackBonus: 0.2,  // Player attack is 20% stronger for every level advanced.
+    levelAttackBonus: 0.6,  // Player attack is 60% stronger for every level advanced.
     dungeonAttackBonus: 0.3, // enemy attack has a 30% boost for each dungeon.
     randomizeAttack: attack => attack * (0.6 + 0.3 * Math.random()),
     xpRequiredPerLevel: 100,
     xpForKillingEnemy: 20,
     // let {enemies, maxEnemyAtk, enemyHealth, weapons, healthPacks, healthPackValue} = dungeonSettings;
     dungeon1: {
-        enemies: 12,
+        enemies: 5,
         maxEnemyAtk: 4,
-        enemyHealth: 20,
-        weapons: [['knife', 5], ['sword', 8]],
+        enemyHealth: 30,
+        weapons: [['knife', 5], ['sword', 5]],
         healthPacks: 5,
-        healthPackValue: 10
+        healthPackValue: 30
     },
     dungeon2: {
-        enemies: 12,
-        maxEnemyAtk: 20,
-        enemyHealth: 40,
-        weapons: [['bow', 12], ['pistol', 16]],
-        healthPacks: 5,
-        healthPackValue: 10
+        enemies: 5,
+        maxEnemyAtk: 10,
+        enemyHealth: 60,
+        weapons: [['bow', 10], ['pistol', 10]],
+        healthPacks: 10,
+        healthPackValue: 30
     },
     dungeon3: {
-        enemies: 12,
-        maxEnemyAtk: 30,
-        enemyHealth: 60,
-        weapons: [['rifle', 20], ['assault rifle', 30]],
-        healthPacks: 10,
-        healthPackValue: 10
+        enemies: 5,
+        maxEnemyAtk: 20,
+        enemyHealth: 200,
+        weapons: [['rifle', 10], ['assault rifle', 10]],
+        healthPacks: 20,
+        healthPackValue: 30
     },
     dungeon4: {
-        enemies: 12,
-        maxEnemyAtk: 40,
-        enemyHealth: 80,
-        weapons: [['bazooka', 40], ['grenade-launcher', 60]],
-        healthPacks: 20,
-        healthPackValue: 10
+        enemies: 5,
+        maxEnemyAtk: 30,
+        enemyHealth: 300,
+        weapons: [['bazooka', 10], ['grenade-launcher', 10]],
+        healthPacks: 30,
+        healthPackValue: 80
     },
     playerStartState: {
         x: 0,
         y: 0,
         type: 'player',
         xp: 0,
-        health: 3800,
+        health: 20,
         attack: 3,
         weapon: 'fist',
         name: 'player'
     },
     bossStartState: {
-        attack: 100,
-        health: 800
+        attack: 60,
+        health: 700
     }
 };
 
@@ -168,12 +168,12 @@ var ViewPort = React.createClass({
             width: viewPortWidth,
             height: viewPortHeight,
             backgroundColor: "white",
+            textAlign: "center",
+            lineHeight: RLGSettings.viewPortHeight + "px",
             visibility: gameStatus === "underConstruction" ? "visible" : "hidden"
         };
         let spinnerStyle = {
             position: "relative",
-            top: viewPortHeight/2,
-            left: viewPortWidth/2,
             color: "black",
             fontSize: 80,
             visibility: gameStatus === "underConstruction" ? "visible" : "hidden"
@@ -195,7 +195,9 @@ var ViewPort = React.createClass({
                         <rect style={darknessStyle}/>
                     </svg>
                 </div>
-                <div id="splashScreen" style={splashScreenStyle}><i style={spinnerStyle} id="spinner" className="fa fa-spinner fa-6" /></div>
+                <div id="splashScreen" style={splashScreenStyle}>
+                    <i style={spinnerStyle} id="spinner" className="fa fa-spinner fa-6 fa-spin" />
+                </div>
             </div>
         )
     }
@@ -369,15 +371,21 @@ export default React.createClass({
         let damageToPlayer = Math.round(RLGSettings.randomizeAttack(playerCopy.attack * (1 + self.state.dungeon * RLGSettings.dungeonAttackBonus)));
         let damageToEnemy = Math.round(RLGSettings.randomizeAttack(playerCopy.attack * (1 + playerLevel * RLGSettings.levelAttackBonus)));
         enemyCopy.health -= damageToEnemy;
-        playerCopy.health -= damageToPlayer;
-        console.log(`Lost ${damageToPlayer} health. ${playerCopy.health} remaining`);
-        console.log(`Inflicted ${damageToEnemy} damage on the enemy! They have ${enemyCopy.health} health remaining.`);
-        if(playerCopy.health < 1) self.gameOver();  // Player is dead.
-        else if(enemyCopy.health < 1) {
+        if(enemyCopy.health > 0) {
+            playerCopy.health -= damageToPlayer;
+            self.addMessage(`Player loses ${damageToPlayer} health. ${playerCopy.health} remaining`);
+            self.addMessage(`${enemyCopy.name} loses ${damageToEnemy} health! ${enemyCopy.health} remaining.`);
+        }
+        else {
+            self.addMessage(`Killed ${enemyCopy.name}!!`);
             playerCopy.x = enemy.x;
             playerCopy.y = enemy.y;
             playerCopy.xp += RLGSettings.xpForKillingEnemy;
         }
+        if(playerCopy.health < 1) {
+            self.gameOver();
+        }
+
         let nextEntities = Object.assign({}, self.state.entities, {[enemy.name]: enemyCopy});
         // Return a promise so caller can delay next action for some time.
         return new Promise(resolve => self.setState({entities: nextEntities, player: playerCopy}, () => setTimeout(()=> resolve(), delay)));
