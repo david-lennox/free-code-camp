@@ -95,9 +95,15 @@ var TTT = React.createClass({
     },
     findCriticalCell(){
         let {board, currentPlayer} = this.state;
+        let squareNos = Object.keys(board);
+        // If the middle is not taken it is always best to take the middle.
+        if(!board[5]) return "5"; // the middle cell.
         let criticalCell;
-        if(Object.keys(board).every(cell => !board[cell])) return "5"; // the middle cell.
-        for(let i = 0; i < winningCombos.length; i++) {
+        // If there are only two squares filled, it is always best to go in the corner.
+        if(squareNos.filter(cell => board[cell]).length === 2){
+            criticalCell = squareNos.find(cell => !board[cell] && [1,3,7,9].includes(cell));
+        }
+        else for(let i = 0; i < winningCombos.length; i++) {
             let combo = winningCombos[i];
             let markers = [];
             combo.forEach(cellNo => {
