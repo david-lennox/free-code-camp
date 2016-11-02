@@ -19,12 +19,13 @@ var TTT = React.createClass({
                 computer: true
             },
             firstMove: "X",
-            currentPlayer: "X"
+            currentPlayer: "X",
+            gameOver: false
         }
     },
     render(){
         let cells = Object.keys(this.state.board).map(square => {
-            return <div key={square} className="cell" onClick={() => this.selectSquare(square)}>{this.state.board[square]}</div>
+            return <div key={square} className="cell" onClick={() => this.handleClick(square, this)}>{this.state.board[square]}</div>
         });
         return (
             <div className="ttt">
@@ -33,6 +34,7 @@ var TTT = React.createClass({
                     <h1>Tic Tac Toe</h1>
                     <h3>{this.state.X.name}: {this.state.X.score} {this.state.currentPlayer === "X" ? " (your turn!)" : ""}</h3>
                     <h3>{this.state.O.name}: {this.state.O.score} {this.state.currentPlayer === "O" ? " (your turn!)" : ""}</h3>
+                    <button onClick={this.newGame}>New Game</button>
                     <div className="board">
                         {cells}
                     </div>
@@ -40,8 +42,19 @@ var TTT = React.createClass({
             </div>
         )
     },
+    /*
+    * The use of the throttle function here is really for demonstration purposes only. It doesn't add any value.
+    *
+    * Note the need to pass down 'this' to the handleClick function. The (more convoluted) other option was to wrap
+    * the creation of the handleClick function in a constructor function of some kind. There may be a better way than
+    * both of these.
+     */
+    handleClick: _.throttle((square, self) => {
+        if(self.state[self.state.currentPlayer].computer === true) alert("It's not your turn!!");
+        else self.selectSquare(square)
+    }, 500),
     selectSquare(square){
-        if(this.state.board[square]) return;
+        if(this.state.board[square] || this.state.gameOver) return;
         this.setState({board: Object.assign({}, this.state.board, {[square]: this.state.currentPlayer})}, () => {
             let winningCombo = findWinner(this.state.board, this.state.currentPlayer);
             if(winningCombo) {
@@ -50,34 +63,62 @@ var TTT = React.createClass({
                 playerCopy.score++;
                 this.setState({
                     [this.state.currentPlayer]: playerCopy,
+                    gameOver: true,
                     currentPlayer: this.state.currentPlayer === "X" ? "O" : "X",
-                    board: newBoard()
-                }, this.playNext);
+                });
             }
             else {
                 let nextPlayer = this.state.currentPlayer === "X" ? "O" : "X";
-                let nextBoard;
                 if(gameDrawn(this.state.board)){
-                    nextBoard = newBoard();
-                    console.log("The game is drawn - starting a new game.");
+                    this.setState({gameOver: true});
+                    console.log("The game is drawn.");
                 }
-                else nextBoard = this.state.board;
-                this.setState({board: nextBoard, currentPlayer: nextPlayer}, this.playNext);
-
-
+                this.setState({currentPlayer: nextPlayer}, this.playNext);
             }
-
         })
     },
     playNext(){
-        if (!this.state[this.state.currentPlayer].computer) return;
+        let {state, findCriticalCell, selectSquare} = this;  // assigning properties of 'this' like this may not be a
+                // great idea because you don't instantly recognise method calls.
+        if (!state[state.currentPlayer].computer || state.gameOver) return;
         console.log("Computer is thinking...");
-        let cc = findCriticalCell(this.state.board);
-        if (cc) this.selectSquare(cc);
-        else {
-            let randomCell = Object.keys(this.state.board).find(cell => !this.state.board[cell]);
-            this.selectSquare(randomCell);
+        let cc = findCriticalCell(state.board);
+        setTimeout(go, 1000);
+        function go(){
+            if (cc) selectSquare(cc);
+            else {
+                let availableCells = Object.keys(state.board).filter(cell => !state.board[cell]);
+                let randomCell = availableCells[Math.round(Math.random() * (availableCells.length - 1))];
+                selectSquare(randomCell);
+            }
         }
+    },
+    findCriticalCell(){
+        let {board, currentPlayer} = this.state;
+        let criticalCell;
+        if(Object.keys(board).every(cell => !board[cell])) return "5"; // the middle cell.
+        for(let i = 0; i < winningCombos.length; i++) {
+            let combo = winningCombos[i];
+            let markers = [];
+            combo.forEach(cellNo => {
+                markers.push(board[cellNo]);
+            });
+            let noOfX = markers.filter(m => m === "X").length;
+            let noOfO = markers.filter(m => m === "O").length;
+            if(noOfX + noOfO === 2 ){
+                if(noOfX === 0 || noOfO === 0){
+                    let symbolOnLine = noOfX > noOfO ? "X" : "O";
+                    if(!criticalCell || symbolOnLine === currentPlayer) criticalCell = combo.find(cell => !board[cell])
+                }
+            }
+        }
+        return criticalCell;
+    },
+    newGame(){
+        this.setState({
+            board: newBoard(),
+            gameOver: false
+        }, this.playNext);
     }
 });
 
@@ -104,23 +145,5 @@ function gameDrawn(board){
     return true;
 }
 
-function findCriticalCell(board){
-    let criticalCell;
-    for(let i = 0; i < winningCombos.length; i++) {
-        let combo = winningCombos[i];
-        let markers = [];
-        combo.forEach(cellNo => {
-            markers.push(board[cellNo]);
-        });
-        let noOfX = markers.filter(m => m === "X").length;
-        let noOfO = markers.filter(m => m === "O").length;
-        if(noOfX + noOfO === 2 ){
-            if(noOfX === 0 || noOfO === 0){
-                if(!criticalCell) criticalCell = combo.find(cell => !board[cell])
-            }
-        }
-    }
-    return criticalCell;
-}
 
 export default TTT;
