@@ -17,3 +17,5 @@ npm-debug.log*
 src/pomodoro/pomodoro.css.map
 src/tictactoe/ttt.css
 src/tictactoe/ttt.css.map
+*.css
+*.map

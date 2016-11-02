@@ -1,7 +1,7 @@
 import React from 'react';
 //import $ from 'jquery';
 
-import './leaderboard.css'
+import './leaderboard.scss'
 
 var Row = React.createClass({
     render: function(){

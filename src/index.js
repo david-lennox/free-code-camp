@@ -12,6 +12,7 @@ import GameOfLife from './game-of-life/GameOfLife';
 import GameOfLifeD3Table from './game-of-life-d3-table/GameOfLifeD3Table';
 import RLG from './rogue-like-game-w-React/RLG';
 import Pomodoro from './pomodoro/Pomodoro';
+import TTT from './tictactoe/TTT';
 
 import About from './about/About';
 import './index.css';
@@ -30,6 +31,7 @@ ReactDOM.render(
             <Route path="/game-of-life-d3-table" component={GameOfLifeD3Table}/>
             <Route path="/rogue-like-game" component={RLG}/>
             <Route path="/pomodoro" component={Pomodoro}/>
+            <route path="/tictactoe" component={TTT}/>
         </Route>
     </Router>,
   document.getElementById('root')
