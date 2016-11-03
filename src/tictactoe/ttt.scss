@@ -19,6 +19,7 @@ $boardSize: 600px;
   }
   h1, h3 {
     text-align: left;
+    padding: 10px;
   }
 }
 
@@ -28,5 +29,24 @@ $boardSize: 600px;
   margin: auto;
 }
 
+.form-group {
+  padding-right: 10px;
+}
+
+.form-check-inline {
+  padding: 10px;
+}
+
+.form-control {
+  padding-left: 20px;
+}
+
+label {
+  padding-right: 15px;
+}
+
+.currentPlayer {
+  background-color: green;
+}
 
 

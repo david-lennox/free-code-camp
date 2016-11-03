@@ -2,29 +2,84 @@ import React from 'react';
 import _ from 'lodash';
 import './ttt.css'
 
+const tttSettings = {
+    computerThinkTime: 100
+};
+
 const winningCombos = [[1,2,3],[4,5,6],[7,8,9],[1,4,7],[2,5,8],[3,6,9],[1,5,9],[3,5,7]];
+
+var PlayerInput = React.createClass({
+    render(){
+        const {playerSymbol, currentName, toggleComputer, changeName} = this.props;
+        return <form className="form-inline">
+            <div className="form-group">
+                <label htmlFor={'nameOf' + playerSymbol}>
+                    <span>Player {playerSymbol} </span>
+                </label>
+                <input className="form-control"
+                       type="text"
+                       placeholder={currentName}
+                       onKeyPress={evt => {
+                           if(evt.key === 'Enter'){
+                               changeName(playerSymbol, evt.target.value);
+                               //evt.target.value = '';
+                               evt.preventDefault();
+                           }}
+                       }
+                       onBlur={evt => {
+                           changeName(playerSymbol, evt.target.value);
+                       }}
+                       id={'nameOf' + playerSymbol}/>
+            </div>
+            <label className="form-check-inline">Computer</label>
+                <input className="form-check-input"
+                       type="checkbox"
+                       checked={this.props.isComputer}
+                       onClick={() => toggleComputer(playerSymbol)}/>
+        </form>
+    },
+    handleKeyPress(evt){
+        let {changeName} = this.props;
+
+    }
+});
 
 var TTT = React.createClass({
     getInitialState(){
         return{
             board: newBoard(),
             X: {
-                name: 'Dave',
+                name: '',
                 score: 0,
                 computer: false
             },
             O: {
-                name: 'Computer',
+                name: '',
                 score: 0,
-                computer: true
+                computer: false
             },
-            currentPlayer: "",
+            currentPlayer: "X",
             gameOver: false,
-            difficulty: "simple"
+            difficulty: "simple",
+            setupComplete: false
         }
     },
     handleSelectFirstMover(event){
         this.setState({currentPlayer: event.target.value}, this.playNext);
+    },
+    handleSelectDifficulty(event){
+        this.setState({difficulty: event.target.value});
+    },
+    setPlayerX(event){
+
+    },
+    changeName(playerSymbol, newName){
+        let revisedPlayer = Object.assign({}, this.state[playerSymbol], {name: newName});
+        this.setState({[playerSymbol]: revisedPlayer})
+    },
+    toggleComputer(playerSymbol){
+        let revisedPlayer = Object.assign({}, this.state[playerSymbol], {computer: !this.state[playerSymbol].computer})
+        this.setState({[playerSymbol]: revisedPlayer})
     },
     render(){
         let cells = Object.keys(this.state.board).map(square => {
@@ -35,20 +90,57 @@ var TTT = React.createClass({
 
                 <div className="board-and-display">
                     <h1>Tic Tac Toe</h1>
-                    {this.state.currentPlayer ? "" : <h2>Choose who should go first!</h2>}
-                    <select value={this.state.currentPlayer} onChange={this.handleSelectFirstMover}>
-                        <option value="X">{this.state.X.name} first</option>
-                        <option value="O">{this.state.O.name} first</option>
-                    </select>
-                    <h3>{this.state.X.name}: {this.state.X.score} {this.state.currentPlayer === "X" ? " (your turn!)" : ""}</h3>
-                    <h3>{this.state.O.name}: {this.state.O.score} {this.state.currentPlayer === "O" ? " (your turn!)" : ""}</h3>
-                    <button onClick={this.newGame}>New Game</button>
-                    <div className="board">
+                    <div id="setupForm" style={{display: this.state.setupComplete ? "none" : ""}}>
+                        <h2>Enter the player names</h2>
+                        <PlayerInput playerSymbol="X"
+                                     currentName={this.state.X.name}
+                                     changeName={this.changeName}
+                                     toggleComputer={this.toggleComputer}
+                                     isComputer={this.state.X.computer}/>
+                        <PlayerInput playerSymbol="O"
+                                     currentName={this.state.O.name}
+                                     changeName={this.changeName}
+                                     toggleComputer={this.toggleComputer}
+                                     isComputer={this.state.O.computer}/>
+                        <div className="form-group"><label>Choose who goes first</label>
+                            <select value={this.state.currentPlayer} onChange={this.handleSelectFirstMover}>
+                                <option value="X">X</option>
+                                <option value="O">O</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <select value={this.state.difficulty} onChange={this.handleSelectDifficulty}>
+                                <option value="easy">Easy</option>
+                                <option value="hard">Hard</option>
+                                <option value="impossible">Impossible</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <button disabled={!this.setupValid()} onClick={this.beginContest}>Begin Contenst</button>
+                        </div>
+
+                    </div>
+                    <div id="gameInfo" style={{display: this.state.setupComplete ? "block" : "none"}}>
+                        <h3 className={this.state.currentPlayer === "X" ? "currentPlayer" : ""}>
+                            Player X ({this.state.X.name || "Computer"}) score: {this.state.X.score}</h3>
+                        <h3 className={this.state.currentPlayer === "O" ? "currentPlayer" : ""}>
+                            Player O: ({this.state.O.name || "Computer"}) score: {this.state.O.score}</h3>
+                        <button onClick={this.newGame}>New Game</button>
+                    </div>
+                    <div style={{display: this.state.setupComplete ? "block" : "none"}} className="board">
                         {cells}
                     </div>
                 </div>
             </div>
         )
+    },
+    beginContest(){
+        this.setState({setupComplete: true}, this.playNext);
+    },
+    setupValid(){
+        return (this.state.X.name || this.state.X.computer)
+            && (this.state.O.name || this.state.O.computer);
     },
     /*
     * The use of the throttle function here is really for demonstration purposes only. It doesn't add any value.
@@ -91,7 +183,7 @@ var TTT = React.createClass({
         if (!state[state.currentPlayer].computer || state.gameOver) return;
         console.log("Computer is thinking...");
         let cc = findCriticalCell(state.board);
-        setTimeout(go, 1000);
+        setTimeout(go, tttSettings.computerThinkTime);
         function go(){
             if (cc) selectSquare(cc);
             else {
