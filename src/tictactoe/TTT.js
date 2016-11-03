@@ -14,15 +14,17 @@ var TTT = React.createClass({
                 computer: false
             },
             O: {
-                name: 'Bob',
+                name: 'Computer',
                 score: 0,
                 computer: true
             },
-            firstMove: "X",
-            currentPlayer: "X",
+            currentPlayer: "",
             gameOver: false,
-            difficulty: "impossible"
+            difficulty: "simple"
         }
+    },
+    handleSelectFirstMover(event){
+        this.setState({currentPlayer: event.target.value}, this.playNext);
     },
     render(){
         let cells = Object.keys(this.state.board).map(square => {
@@ -33,6 +35,11 @@ var TTT = React.createClass({
 
                 <div className="board-and-display">
                     <h1>Tic Tac Toe</h1>
+                    {this.state.currentPlayer ? "" : <h2>Choose who should go first!</h2>}
+                    <select value={this.state.currentPlayer} onChange={this.handleSelectFirstMover}>
+                        <option value="X">{this.state.X.name} first</option>
+                        <option value="O">{this.state.O.name} first</option>
+                    </select>
                     <h3>{this.state.X.name}: {this.state.X.score} {this.state.currentPlayer === "X" ? " (your turn!)" : ""}</h3>
                     <h3>{this.state.O.name}: {this.state.O.score} {this.state.currentPlayer === "O" ? " (your turn!)" : ""}</h3>
                     <button onClick={this.newGame}>New Game</button>
@@ -96,11 +103,12 @@ var TTT = React.createClass({
     },
     findCriticalCell(){
         let {board, currentPlayer, difficulty} = this.state;
+        if(difficulty === "easy") return false;
         let squareNos = Object.keys(board);
         // If the middle is not taken it is always best to take the middle.
-        if(!board[5]) return "5"; // the middle cell.
-        // If there are only two squares filled, it is always best to go in the corner.
+        if(!board[5]) return "5";
         let criticalCell;
+        // find imminent loss or win.
         for(let i = 0; i < winningCombos.length; i++) {
             let combo = winningCombos[i];
             let markers = [];
@@ -116,7 +124,7 @@ var TTT = React.createClass({
                 }
             }
         }
-
+        // find checkmate scenario
         if(!criticalCell && difficulty === "impossible"){
             let possibleWinners = winningCombos.filter(combo => {
                 let otherPlayer = currentPlayer === "X" ? "O" : "X";
@@ -124,10 +132,12 @@ var TTT = React.createClass({
                 let hasOtherPlayer = _.some(combo, cell => board[cell] === otherPlayer);
                 return (hasCurrentPlayer && !hasOtherPlayer);
             });
-            let intersectingCells = _.intersection(...possibleWinners);
-            criticalCell = intersectingCells.filter(cell => !board[cell])[0];
+            let flattenedWinners = _.flatten(possibleWinners);
+            let cellFreqObj = _.countBy(flattenedWinners);
+            criticalCell = Object.keys(cellFreqObj).find(cell => cellFreqObj[cell] > 1 && !board[cell]);
         }
-        if(!criticalCell && (difficulty === "hard" || difficulty === "impossible")){ // always go in the corner
+        // otherwise go in the corner.
+        if(!criticalCell && (difficulty === "hard" || difficulty === "impossible")){
             return squareNos.find(cell => !board[cell] && ["1","3","7","9"].includes(cell));
         }
         return criticalCell;
