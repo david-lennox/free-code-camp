@@ -10,13 +10,13 @@ const winningCombos = [[1,2,3],[4,5,6],[7,8,9],[1,4,7],[2,5,8],[3,6,9],[1,5,9],[
 
 var PlayerInput = React.createClass({
     render(){
-        const {playerSymbol, currentName, toggleComputer, changeName} = this.props;
+        const {playerSymbol, currentName, toggleComputer, changeName, isComputer} = this.props;
         return <form className="form-inline">
             <div className="form-group">
                 <label htmlFor={'nameOf' + playerSymbol}>
                     <span>Player {playerSymbol} </span>
                 </label>
-                <input className="form-control"
+                <input style={{display: isComputer ? 'none' : 'inline'}} className="form-control"
                        type="text"
                        placeholder={currentName}
                        onKeyPress={evt => {
@@ -34,13 +34,9 @@ var PlayerInput = React.createClass({
             <label className="form-check-inline">Computer</label>
                 <input className="form-check-input"
                        type="checkbox"
-                       checked={this.props.isComputer}
-                       onClick={() => toggleComputer(playerSymbol)}/>
+                       checked={isComputer}
+                       onChange={toggleComputer.bind(null, playerSymbol)}/>
         </form>
-    },
-    handleKeyPress(evt){
-        let {changeName} = this.props;
-
     }
 });
 
@@ -48,19 +44,11 @@ var TTT = React.createClass({
     getInitialState(){
         return{
             board: newBoard(),
-            X: {
-                name: '',
-                score: 0,
-                computer: false
-            },
-            O: {
-                name: '',
-                score: 0,
-                computer: false
-            },
+            X: blankPlayer("Bob", false),
+            O: blankPlayer("Computer", true),
             currentPlayer: "X",
             gameOver: false,
-            difficulty: "simple",
+            difficulty: "ridiculously easy", // or easy, difficult, impossible
             setupComplete: false
         }
     },
@@ -89,7 +77,7 @@ var TTT = React.createClass({
             <div className="ttt">
 
                 <div className="board-and-display">
-                    <h1>Tic Tac Toe</h1>
+                    <h1>Tic Tac Toe ({this.state.difficulty} mode)</h1>
                     <div id="setupForm" style={{display: this.state.setupComplete ? "none" : ""}}>
                         <h2>Enter the player names</h2>
                         <PlayerInput playerSymbol="X"
@@ -110,6 +98,7 @@ var TTT = React.createClass({
                         </div>
                         <div className="form-group">
                             <select value={this.state.difficulty} onChange={this.handleSelectDifficulty}>
+                                <option value="ridiculously easy">Ridiculously Easy</option>
                                 <option value="easy">Easy</option>
                                 <option value="hard">Hard</option>
                                 <option value="impossible">Impossible</option>
@@ -117,23 +106,32 @@ var TTT = React.createClass({
                         </div>
 
                         <div className="form-group">
-                            <button disabled={!this.setupValid()} onClick={this.beginContest}>Begin Contenst</button>
+                            <button disabled={!this.setupValid()} onClick={this.beginContest}>Begin Contest</button>
                         </div>
 
                     </div>
-                    <div id="gameInfo" style={{display: this.state.setupComplete ? "block" : "none"}}>
-                        <h3 className={this.state.currentPlayer === "X" ? "currentPlayer" : ""}>
-                            Player X ({this.state.X.name || "Computer"}) score: {this.state.X.score}</h3>
-                        <h3 className={this.state.currentPlayer === "O" ? "currentPlayer" : ""}>
-                            Player O: ({this.state.O.name || "Computer"}) score: {this.state.O.score}</h3>
-                        <button onClick={this.newGame}>New Game</button>
+
+                    <div className="game" style={{display: this.state.setupComplete ? "block" : "none"}}>
+                        <div id="gameInfo">
+                            <h3 className={this.state.currentPlayer === "X" ? "currentPlayer" : ""}>
+                                Player X ({this.state.X.name || "Computer"}) score: {this.state.X.score}</h3>
+                            <h3 className={this.state.currentPlayer === "O" ? "currentPlayer" : ""}>
+                                Player O: ({this.state.O.name || "Computer"}) score: {this.state.O.score}</h3>
+                            <button onClick={this.newGame}>Restart this game</button>
+                            <button onClick={this.reset}>Reset Match</button>
+                        </div>
+                        <div className="board">
+                            {cells}
+                        </div>
+
                     </div>
-                    <div style={{display: this.state.setupComplete ? "block" : "none"}} className="board">
-                        {cells}
-                    </div>
+
                 </div>
             </div>
         )
+    },
+    reset(){
+        this.setState({board: newBoard(), setupComplete: false, X: blankPlayer(this.state.X.name), O: blankPlayer(this.state.O.name)})
     },
     beginContest(){
         this.setState({setupComplete: true}, this.playNext);
@@ -165,12 +163,12 @@ var TTT = React.createClass({
                     [this.state.currentPlayer]: playerCopy,
                     gameOver: true,
                     currentPlayer: this.state.currentPlayer === "X" ? "O" : "X",
-                });
+                }, () => setTimeout(this.newGame, 1500));
             }
             else {
                 let nextPlayer = this.state.currentPlayer === "X" ? "O" : "X";
                 if(gameDrawn(this.state.board)){
-                    this.setState({gameOver: true});
+                    this.setState({gameOver: true}, () => setTimeout(this.newGame, 1500));
                     console.log("The game is drawn.");
                 }
                 this.setState({currentPlayer: nextPlayer}, this.playNext);
@@ -178,11 +176,11 @@ var TTT = React.createClass({
         })
     },
     playNext(){
-        let {state, findCriticalCell, selectSquare} = this;  // assigning properties of 'this' like this may not be a
+        let {state, findBestMove, selectSquare} = this;  // assigning properties of 'this' like this may not be a
                 // great idea because you don't instantly recognise method calls.
         if (!state[state.currentPlayer].computer || state.gameOver) return;
         console.log("Computer is thinking...");
-        let cc = findCriticalCell(state.board);
+        let cc = findBestMove(state.board);
         setTimeout(go, tttSettings.computerThinkTime);
         function go(){
             if (cc) selectSquare(cc);
@@ -193,12 +191,13 @@ var TTT = React.createClass({
             }
         }
     },
-    findCriticalCell(){
+    findBestMove(){
         let {board, currentPlayer, difficulty} = this.state;
-        if(difficulty === "easy") return false;
+        if(difficulty === "ridiculously easy") return false;
         let squareNos = Object.keys(board);
         // If the middle is not taken it is always best to take the middle.
         if(!board[5]) return "5";
+        if(difficulty === "easy") return false;
         let criticalCell;
         // find imminent loss or win.
         for(let i = 0; i < winningCombos.length; i++) {
@@ -229,11 +228,10 @@ var TTT = React.createClass({
             criticalCell = Object.keys(cellFreqObj).find(cell => cellFreqObj[cell] > 1 && !board[cell]);
         }
         // otherwise go in the corner.
-        if(!criticalCell && (difficulty === "hard" || difficulty === "impossible")){
+        if(!criticalCell && difficulty === "impossible"){
             return squareNos.find(cell => !board[cell] && ["1","3","7","9"].includes(cell));
         }
         return criticalCell;
-
     },
     newGame(){
         this.setState({
@@ -265,6 +263,8 @@ function gameDrawn(board){
     }
     return true;
 }
-
+function blankPlayer(name, computer){
+    return {name: name, score: 0, computer: computer}
+}
 
 export default TTT;
