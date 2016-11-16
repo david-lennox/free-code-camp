@@ -19,3 +19,4 @@ src/tictactoe/ttt.css
 src/tictactoe/ttt.css.map
 *.css
 *.map
+.sass-cache/

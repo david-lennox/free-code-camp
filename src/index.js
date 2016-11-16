@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Router, Route, browserHistory } from 'react-router';
+import { Router, Route, IndexRoute, browserHistory } from 'react-router';
+import Shell from './shell/Shell';
 import Home from './home/Home';
 import WeatherApp from './weather/WeatherApp';
 import Leaderboard from './leaderboard/LeaderboardApp';
@@ -19,7 +20,8 @@ import './index.css';
 
 ReactDOM.render(
     <Router history={browserHistory}>
-        <Route path="/" component={Home}>
+        <Route path="/" component={Shell}>
+            <IndexRoute component={Home}/>
             <Route path="/about" component={About}/>
             <Route path="/weather" component={WeatherApp}/>
             <Route path="/leaderboard" component={Leaderboard}/>

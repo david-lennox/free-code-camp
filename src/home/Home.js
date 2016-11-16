@@ -19,7 +19,6 @@ class TOCRow extends Component {
 
 class Home extends Component {
   render() {
-
       let tocRows = tocData.map(c => <TOCRow key={c.title} item={c}/>);
         return (
           <div>
@@ -29,9 +28,6 @@ class Home extends Component {
                 {tocRows}
                 </tbody>
             </table>
-
-              {this.props.children}
-
           </div>
         )
   }
