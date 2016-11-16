@@ -19,23 +19,20 @@ var PlayerInput = React.createClass({
                 <input style={{display: isComputer ? 'none' : 'inline'}} className="form-control"
                        type="text"
                        placeholder={currentName}
+                       onChange={evt => changeName(playerSymbol, evt.target.value)}
                        onKeyPress={evt => {
-                           if(evt.key === 'Enter'){
-                               changeName(playerSymbol, evt.target.value);
-                               //evt.target.value = '';
-                               evt.preventDefault();
-                           }}
-                       }
-                       onBlur={evt => {
-                           changeName(playerSymbol, evt.target.value);
+                           if(evt.key === "Enter") evt.preventDefault();
                        }}
                        id={'nameOf' + playerSymbol}/>
             </div>
             <label className="form-check-inline">Computer</label>
                 <input className="form-check-input"
+                       value={isComputer}
                        type="checkbox"
                        checked={isComputer}
-                       onChange={toggleComputer.bind(null, playerSymbol)}/>
+                       onClick={() => toggleComputer(playerSymbol)}
+                       readOnly
+                />
         </form>
     }
 });
@@ -131,7 +128,7 @@ var TTT = React.createClass({
         )
     },
     reset(){
-        this.setState({board: newBoard(), setupComplete: false, X: blankPlayer(this.state.X.name), O: blankPlayer(this.state.O.name)})
+        this.setState({board: newBoard(), setupComplete: false, X: blankPlayer(this.state.X.name, this.state.X.computer), O: blankPlayer(this.state.O.name, this.state.O.computer)})
     },
     beginContest(){
         this.setState({setupComplete: true}, this.playNext);
@@ -178,6 +175,7 @@ var TTT = React.createClass({
     playNext(){
         let {state, findBestMove, selectSquare} = this;  // assigning properties of 'this' like this may not be a
                 // great idea because you don't instantly recognise method calls.
+        if(!state.setupComplete) return;
         if (!state[state.currentPlayer].computer || state.gameOver) return;
         console.log("Computer is thinking...");
         let cc = findBestMove(state.board);
