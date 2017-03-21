@@ -8,6 +8,14 @@ const tttSettings = {
 
 const winningCombos = [[1,2,3],[4,5,6],[7,8,9],[1,4,7],[2,5,8],[3,6,9],[1,5,9],[3,5,7]];
 
+var MessageBox = React.createClass({
+    render() {
+        const {msg} = this.props;
+        if(!msg) return null;
+        return <div className="message">{msg}</div>
+    }
+});
+
 var PlayerInput = React.createClass({
     render(){
         const {playerSymbol, currentName, toggleComputer, changeName, isComputer} = this.props;
@@ -18,7 +26,8 @@ var PlayerInput = React.createClass({
                 </label>
                 <input style={{display: isComputer ? 'none' : 'inline'}} className="form-control"
                        type="text"
-                       placeholder={currentName}
+                       value={currentName}
+                       placeholder="enter a name"
                        onChange={evt => changeName(playerSymbol, evt.target.value)}
                        onKeyPress={evt => {
                            if(evt.key === "Enter") evt.preventDefault();
@@ -41,12 +50,13 @@ var TTT = React.createClass({
     getInitialState(){
         return{
             board: newBoard(),
-            X: blankPlayer("Bob", false),
-            O: blankPlayer("Computer", true),
+            X: blankPlayer("", false),
+            O: blankPlayer("", true),
             currentPlayer: "X",
             gameOver: false,
             difficulty: "ridiculously easy", // or easy, difficult, impossible
-            setupComplete: false
+            setupComplete: false,
+            message: ''
         }
     },
     handleSelectFirstMover(event){
@@ -55,8 +65,8 @@ var TTT = React.createClass({
     handleSelectDifficulty(event){
         this.setState({difficulty: event.target.value});
     },
-    setPlayerX(event){
-
+    displayMessage(msg, duration){
+        this.setState({message: msg}, () => setTimeout(() => this.setState({message: ''}), duration))
     },
     changeName(playerSymbol, newName){
         let revisedPlayer = Object.assign({}, this.state[playerSymbol], {name: newName});
@@ -87,23 +97,36 @@ var TTT = React.createClass({
                                      changeName={this.changeName}
                                      toggleComputer={this.toggleComputer}
                                      isComputer={this.state.O.computer}/>
-                        <div className="form-group"><label>Choose who goes first</label>
-                            <select value={this.state.currentPlayer} onChange={this.handleSelectFirstMover}>
-                                <option value="X">X</option>
-                                <option value="O">O</option>
-                            </select>
+                        <div className="form-group">
+                            <label className="col-sm-5 control-label">Choose who goes first</label>
+                            <div className="col-sm-5">
+                                <select value={this.state.currentPlayer}
+                                        onChange={this.handleSelectFirstMover}
+                                        className="form-control">
+                                    <option value="X">X</option>
+                                    <option value="O">O</option>
+                                </select>
+                            </div>
                         </div>
                         <div className="form-group">
-                            <select value={this.state.difficulty} onChange={this.handleSelectDifficulty}>
-                                <option value="ridiculously easy">Ridiculously Easy</option>
-                                <option value="easy">Easy</option>
-                                <option value="hard">Hard</option>
-                                <option value="impossible">Impossible</option>
-                            </select>
+                            <label className="col-sm-5 control-label">Choose difficulty</label>
+                            <div className="col-sm-5">
+                                <select value={this.state.difficulty}
+                                        onChange={this.handleSelectDifficulty}
+                                        className="form-control">
+                                    <option value="ridiculously easy">Ridiculously Easy</option>
+                                    <option value="easy">Easy</option>
+                                    <option value="hard">Hard</option>
+                                    <option value="impossible">Impossible</option>
+                                </select>
+                            </div>
                         </div>
 
                         <div className="form-group">
-                            <button disabled={!this.setupValid()} onClick={this.beginContest}>Begin Contest</button>
+                            <button disabled={!this.setupValid()}
+                                    onClick={this.beginContest}
+                                    className="btn btn-default" >Begin Contest
+                            </button>
                         </div>
 
                     </div>
@@ -114,10 +137,11 @@ var TTT = React.createClass({
                                 Player X ({this.state.X.name || "Computer"}) score: {this.state.X.score}</h3>
                             <h3 className={this.state.currentPlayer === "O" ? "currentPlayer" : ""}>
                                 Player O: ({this.state.O.name || "Computer"}) score: {this.state.O.score}</h3>
-                            <button onClick={this.newGame}>Restart this game</button>
-                            <button onClick={this.reset}>Reset Match</button>
+                            <button className="btn btn-default" onClick={this.newGame}>Restart this game</button>
+                            <button className="btn btn-default" onClick={this.reset}>Reset Match</button>
                         </div>
                         <div className="board">
+                            <MessageBox msg={this.state.message}/>
                             {cells}
                         </div>
 
@@ -153,7 +177,8 @@ var TTT = React.createClass({
         this.setState({board: Object.assign({}, this.state.board, {[square]: this.state.currentPlayer})}, () => {
             let winningCombo = findWinner(this.state.board, this.state.currentPlayer);
             if(winningCombo) {
-                console.log("WINNER IS " + this.state[this.state.currentPlayer].name);
+                this.displayMessage("WINNER IS " + (this.state[this.state.currentPlayer].name || "Computer"), 1500);
+                console.log("WINNER IS " + (this.state[this.state.currentPlayer].name || "Computer"));
                 let playerCopy = Object.assign({}, this.state[this.state.currentPlayer]);
                 playerCopy.score++;
                 this.setState({
@@ -165,6 +190,7 @@ var TTT = React.createClass({
             else {
                 let nextPlayer = this.state.currentPlayer === "X" ? "O" : "X";
                 if(gameDrawn(this.state.board)){
+                    this.displayMessage('The game is drawn!', 1500);
                     this.setState({gameOver: true}, () => setTimeout(this.newGame, 1500));
                     console.log("The game is drawn.");
                 }

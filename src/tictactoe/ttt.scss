@@ -17,36 +17,49 @@ $boardSize: 600px;
     font-size: xx-large;
     cursor: pointer;
   }
+
+
   h1, h3 {
     text-align: left;
     padding: 10px;
   }
+  .board-and-display {
+    width: $boardSize;
+    position: relative;
+    margin: auto;
+  }
+
+  .form-group {
+    padding-right: 10px;
+  }
+
+  .form-check-inline {
+    padding: 10px;
+  }
+
+  .form-control {
+    padding-left: 20px;
+  }
+
+  label {
+    padding-right: 15px;
+  }
+
+  .currentPlayer {
+    background-color: green;
+  }
+
+  .message {
+    color: red;
+    position: fixed;
+    font-size: xx-large;
+    background-color: darkgray;
+  }
+
+  .form-group {
+    padding: 10px;
+  }
 }
 
-.board-and-display {
-  width: $boardSize;
-  position: relative;
-  margin: auto;
-}
-
-.form-group {
-  padding-right: 10px;
-}
-
-.form-check-inline {
-  padding: 10px;
-}
-
-.form-control {
-  padding-left: 20px;
-}
-
-label {
-  padding-right: 15px;
-}
-
-.currentPlayer {
-  background-color: green;
-}
 
 

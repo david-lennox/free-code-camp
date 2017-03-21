@@ -16,7 +16,7 @@ var About = React.createClass({
         )
     },
     componentDidMount(){
-        var URL = `https//localhost:49092/Account/Register`;
+        var URL = `http//localhost:9039/api/Account/Register`;
         fetch(URL,{
             Email: 'fatty@fattyfat.com',
             Password: 'few%445*Ag',
@@ -26,6 +26,8 @@ var About = React.createClass({
         });
 
         function handleResponse(data){
+            debugger;
+            localStorage.setItem('AppToken', JSON.stringify(data.token));
             console.log(data);
         }
     }
