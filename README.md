@@ -30,7 +30,7 @@ just install the dependencies if required: `npm install`
 
 Then start the development server: `npm start`.  
 
-And start the SCSS watch process: `sass --watch G:\DLW\Code\Tutorials\FreeCodeCamp`
+And start the SCSS watch process: `sass --watch %cd%`
  
 The application is bootstrapped with the **create-react-app** tool. See 
 details and instructions online. 
@@ -52,4 +52,8 @@ and also receiving the function that changes it.
 The problem was caused by the value attribute being set to "undefined"
 under certain conditions. The Warning was not helpful.
 
+This is an irrelevant contribution for the sake of practicing Git Pull Requests. This comment is being made on the Simon-Game branch.
+
 This pointless line has been made on the Master Branch and will conflict with changes to this file on the Simon-Game Branch.
+
+This is a comment added when resolving the conflict. I selected to keep both.
