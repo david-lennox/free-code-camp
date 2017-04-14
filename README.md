@@ -51,3 +51,5 @@ and also receiving the function that changes it.
 
 The problem was caused by the value attribute being set to "undefined"
 under certain conditions. The Warning was not helpful.
+
+This pointless line has been made on the Master Branch and will conflict with changes to this file on the Simon-Game Branch.
