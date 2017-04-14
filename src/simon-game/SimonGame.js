@@ -6,7 +6,6 @@ import React from 'react';
 var SimonBtn = React.createClass({
     render(){
         return <div className={this.props.clr}>
-
         </div>
     },
     handleButtonPress(evt){
@@ -64,6 +63,8 @@ var SimonGame = React.createClass({
 });
 
 export default SimonGame;
+
+// This rendering of the component is uncommented when pasting into Codepen.io.
 
 // ReactDOM.render(
 //     <RecipeBook />,
