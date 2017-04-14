@@ -51,3 +51,5 @@ and also receiving the function that changes it.
 
 The problem was caused by the value attribute being set to "undefined"
 under certain conditions. The Warning was not helpful.
+
+This is an irrelevant contribution for the sake of practicing Git Pull Requests. This comment is being made on the Simon-Game branch.
