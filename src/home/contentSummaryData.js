@@ -27,7 +27,7 @@ export default
     {
         link: '/recipes',
         title: 'Recipe App',
-        description: 'Add Recipes and display them.',
+        description: 'Add Recipes and display them. Note the method of "binding" the context and the arguments to functions. So this is a way of passing in the arguments without actually calling the function. The bind function returns a new function that will be called with the specified arguments.',
         completion: 100
     },
     {
@@ -79,6 +79,12 @@ export default
         link: "/tictactoe",
         title: 'Tic Tac Toe',
         description: `A game of Tic Tac Toe.`,
-        completion: 0
+        completion: 90
+    },
+    {
+        link: "/simon-game",
+        title: 'Simon Game',
+        description: `The game where you try to remember a sequence of beeps.`,
+        completion: 5
     },
 ]

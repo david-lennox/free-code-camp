@@ -62,3 +62,10 @@ var SimonGame = React.createClass({
     },
 
 });
+
+export default SimonGame;
+
+// ReactDOM.render(
+//     <RecipeBook />,
+//     document.getElementById('content')
+// );

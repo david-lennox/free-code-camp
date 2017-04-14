@@ -30,7 +30,7 @@ just install the dependencies if required: `npm install`
 
 Then start the development server: `npm start`.  
 
-And start the SCSS watch process: `sass --watch G:\DLW\Code\Tutorials\FreeCodeCamp`
+And start the SCSS watch process: `sass --watch %cd%`
  
 The application is bootstrapped with the **create-react-app** tool. See 
 details and instructions online. 
